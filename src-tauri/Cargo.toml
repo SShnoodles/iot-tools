@@ -1,5 +1,5 @@
 [package]
-name = "Iot-tools"
+name = "iot_tools"
 version = "0.0.0"
 description = "A Iot Tools Tauri App"
 authors = ["ssnoodles"]

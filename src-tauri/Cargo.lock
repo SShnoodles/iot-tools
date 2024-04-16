@@ -3,18 +3,6 @@
 version = 3
 
 [[package]]
-name = "Iot-tools"
-version = "0.0.0"
-dependencies = [
- "lazy_static",
- "serde",
- "serde_json",
- "serialport",
- "tauri",
- "tauri-build",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1317,6 +1305,18 @@ checksum = "617ee6cf8e3f66f3b4ea67a4058564628cde41901316e19f559e14c7c72c5e7b"
 dependencies = [
  "core-foundation-sys",
  "mach2",
+]
+
+[[package]]
+name = "iot_tools"
+version = "0.0.0"
+dependencies = [
+ "lazy_static",
+ "serde",
+ "serde_json",
+ "serialport",
+ "tauri",
+ "tauri-build",
 ]
 
 [[package]]

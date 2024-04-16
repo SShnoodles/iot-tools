@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 use lazy_static::lazy_static;
-use std::sync::Mutex;
+use std::sync::{Mutex};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -12,7 +12,7 @@ struct SerialPortConfig {
     data_bits: i8,
     stop_bits: i8,
     parity: String,
-    flow_type: String,
+    flow_control: String,
 }
 
 lazy_static! {
@@ -20,7 +20,7 @@ lazy_static! {
         data_bits: 8,
         stop_bits: 1,
         parity: "None".to_string(),
-        flow_type: "None".to_string(),
+        flow_control: "None".to_string(),
     });
 
     static ref PORTS: Mutex<HashMap<String, Box<dyn serialport::SerialPort>>> = Mutex::new(HashMap::new());
@@ -39,12 +39,24 @@ fn get_serial_port_list() -> Vec<String> {
 
 // 设置全局串口配置
 #[tauri::command]
-fn set_serial_port_config(data_bits: i8, stop_bits: i8, parity: String, flow_type: String) {
+fn set_serial_port_config(data_bits: i8, stop_bits: i8, parity: String, flow_control: String) {
     let mut config = SERIAL_PORT_CONFIG.lock().unwrap();
     config.data_bits = data_bits;
     config.stop_bits = stop_bits;
     config.parity = parity;
-    config.flow_type = flow_type;
+    config.flow_control = flow_control;
+}
+
+// 获取全局串口设置
+#[tauri::command]
+fn get_serial_port_config() -> SerialPortConfig {
+    let config = SERIAL_PORT_CONFIG.lock().unwrap();
+    return SerialPortConfig {
+        data_bits: config.data_bits,
+        stop_bits: config.stop_bits,
+        parity: config.parity.to_string(),
+        flow_control: config.flow_control.to_string(),
+    }
 }
 
 // 打开串口
@@ -93,6 +105,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_serial_port_list,
             set_serial_port_config,
+            get_serial_port_config,
             open_serial_port, 
             write_to_serial_port, 
             read_from_serial_port

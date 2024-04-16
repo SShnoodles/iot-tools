@@ -8,7 +8,7 @@ const form = ref({
   dataBits: 8,
   stopBits: 1,
   parity: "None",
-  flowType: "None",
+  flowControl: "None",
 });
 
 const dataBitsOptions = [
@@ -28,19 +28,20 @@ const parityOptions = [
   {label: "Mark", value: "Mark"},
   {label: "Space", value: "Space"},
 ]
-const flowTypeOptions = [
+const flowControlOptions = [
   {label: "None", value: "None"},
   {label: "RTS/CTS", value: "RTS/CTS"},
   {label: "XON/XOFF", value: "XON/XOFF"},
 ]
 
 const updateConfig = async () => {
-  await invoke("set_port_config", {c:form.value});
+  await invoke("set_serial_port_config", form.value);
   dialogVisible.value = false;
 }
 
 defineExpose({
-  dialogVisible
+  dialogVisible,
+  form
 });
 </script>
 
@@ -87,9 +88,9 @@ defineExpose({
         </el-select>
       </el-form-item>
       <el-form-item label="流控">
-        <el-select v-model="form.flowType" style="width: 240px">
+        <el-select v-model="form.flowControl" style="width: 240px">
           <el-option
-              v-for="item in flowTypeOptions"
+              v-for="item in flowControlOptions"
               :key="item.value"
               :label="item.label"
               :value="item.value"
