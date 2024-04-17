@@ -6,6 +6,8 @@ export interface SerialPort {
   sendFormat: number;
   sendContent: string;
   returnContent: string;
+  showSend: boolean,
+  showTime: boolean,
 }
 
 export interface Option {

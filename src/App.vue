@@ -1,21 +1,24 @@
 <script setup lang="ts">
-// This starter template is using Vue 3 <script setup> SFCs
-// Check out https://vuejs.org/api/sfc-script-setup.html#script-setup
+import {ref} from "vue";
 import SerialPort from "./components/SerialPort.vue";
+import Modbus from "./components/Modbus.vue";
+
+const activeTab = ref("serialPort");
 </script>
 
 <template>
   <div class="container">
-    <SerialPort />
+    <el-tabs v-model="activeTab" type="border-card">
+      <el-tab-pane name="serialPort" label="串口调试">
+        <SerialPort />
+      </el-tab-pane>
+      <el-tab-pane name="modbus" label="Modbus调试">
+        <Modbus />
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
 <style scoped>
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
 
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #249b73);
-}
 </style>
