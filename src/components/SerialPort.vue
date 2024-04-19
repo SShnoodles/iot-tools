@@ -3,7 +3,7 @@ import {ref, reactive, onMounted} from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
 import SerialPortSetting from "./SerialPortSetting.vue";
 import {SerialPort, Option} from "../types/serial";
-import dayjs from 'dayjs';
+import * as dayjs from 'dayjs';
 import { ElMessage } from 'element-plus';
 
 const vForm = ref();
@@ -96,6 +96,12 @@ const openSetting = () => {
   serialPortSetting.value.dialogVisible = true;
 }
 
+const isOpen = ref(false);
+const cleanReturn = async () => {
+  state.formData.returnContent = "";
+  isOpen.value = await invoke<boolean>("is_serial_port_open", {portName: state.formData.serialPort});
+}
+
 onMounted(() => {
   getPortList();
 })
@@ -155,10 +161,17 @@ function toHexString(byteArray: Uint8Array) {
       </el-radio-group>
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
       <el-checkbox v-model="state.formData.showTime" label="显示时间" value="true" />
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <el-button @click="cleanReturn">清空</el-button>
     </el-form-item>
     <el-form-item label="接收内容">
-      <el-input type="textarea" v-model="state.formData.returnContent" rows="23"></el-input>
+      <el-input type="textarea" v-model="state.formData.returnContent" rows="22"></el-input>
     </el-form-item>
   </el-form>
   <SerialPortSetting ref="serialPortSetting"></SerialPortSetting>
+  <div>
+    串口状态：
+    <el-tag type="success" v-if="isOpen">打开</el-tag>
+    <el-tag type="danger" v-else>关闭</el-tag>
+  </div>
 </template>

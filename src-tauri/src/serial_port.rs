@@ -5,7 +5,7 @@ use std::time::Duration;
 use lazy_static::lazy_static;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct SerialPortConfig {
+pub struct SerialPortConfig {
     data_bits: i8,
     stop_bits: i8,
     parity: String,
@@ -95,4 +95,14 @@ pub fn read_from_serial_port(port_name: &str) -> Vec<u8> {
     }
     println!("{:X?}", serial_buf);
     serial_buf
+}
+
+// 检查串口是否已打开
+#[tauri::command]
+pub fn is_serial_port_open(port_name: &str) -> bool {
+    if let Some(_) = PORTS.lock().unwrap().get_mut(port_name) {
+        return true
+    } else {
+        return false
+    }
 }
