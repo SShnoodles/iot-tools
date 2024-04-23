@@ -5,7 +5,8 @@ export interface SerialPort {
   autoSendTimes: number;
   sendFormat: number;
   sendContent: string;
-  returnContent: string;
+  receiveFormat: number;
+  receiveContent: string;
   showSend: boolean,
   showTime: boolean,
 }

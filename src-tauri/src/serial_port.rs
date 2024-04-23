@@ -58,25 +58,36 @@ pub fn get_serial_port_config() -> SerialPortConfig {
 
 // 打开串口
 #[tauri::command]
-pub fn open_serial_port(port_name: &str, baud_rate: u32) {
-    if !PORTS.lock().unwrap().contains_key(port_name) {
-        if let Ok(port) = serialport::new(port_name, baud_rate)
-            .timeout(Duration::from_millis(200))
-            .open()
-        {
+pub fn open_serial_port(port_name: &str, baud_rate: u32) -> Result<String, String>{
+    if PORTS.lock().unwrap().contains_key(port_name) {
+        return Ok("Opened".to_string());
+    }
+    let s = serialport::new(port_name, baud_rate)
+        .timeout(Duration::from_millis(200))
+        .open();
+    return match s {
+        Ok(port) => {
             PORTS.lock().unwrap().insert(port_name.to_string(), port);
-        } else {
-            eprintln!("Failed to open serial port: {}", port_name);
-        }
+            Ok("Opened".to_string())
+        },
+        Err(e) => Err(e.description),
+    };
+}
+
+// 关闭串口
+#[tauri::command]
+pub fn stop_serial_port(port_name: &str) {
+    if PORTS.lock().unwrap().contains_key(port_name) {
+        PORTS.lock().unwrap().remove(port_name);
+        drop(PORTS.lock().unwrap().get_mut(port_name));
     }
 }
 
 // 写入数据到串口
 #[tauri::command]
-pub fn write_to_serial_port(port_name: &str, content: &str) -> bool {
+pub fn write_to_serial_port(port_name: &str, content: Vec<u8>) -> bool {
     if let Some(port) = PORTS.lock().unwrap().get_mut(port_name) {
-        let output = content.as_bytes();
-        if let Ok(_) = port.write(output) {
+        if let Ok(_) = port.write(&content) {
             return true;
         }
     }
@@ -88,12 +99,10 @@ pub fn write_to_serial_port(port_name: &str, content: &str) -> bool {
 pub fn read_from_serial_port(port_name: &str) -> Vec<u8> {
     let mut serial_buf: Vec<u8> = Vec::new();
     if let Some(port) = PORTS.lock().unwrap().get_mut(port_name) {
-        if let Err(e) = port.read(serial_buf.as_mut_slice()) {
-            eprintln!("Read {}", e);
+        if let Err(_) = port.read(serial_buf.as_mut_slice()) {
             return serial_buf;
         }
     }
-    println!("{:X?}", serial_buf);
     serial_buf
 }
 
