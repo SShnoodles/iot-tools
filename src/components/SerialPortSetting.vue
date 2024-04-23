@@ -25,13 +25,11 @@ const parityOptions = [
   {label: "None", value: "None"},
   {label: "Even", value: "Even"},
   {label: "Odd", value: "Odd"},
-  {label: "Mark", value: "Mark"},
-  {label: "Space", value: "Space"},
 ]
 const flowControlOptions = [
   {label: "None", value: "None"},
-  {label: "RTS/CTS", value: "RTS/CTS"},
-  {label: "XON/XOFF", value: "XON/XOFF"},
+  {label: "Software", value: "Software"},
+  {label: "Hardware", value: "Hardware"},
 ]
 
 const updateConfig = async () => {
