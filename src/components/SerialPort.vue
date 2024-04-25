@@ -79,9 +79,9 @@ const open = async () => {
 const send = async () => {
   let bytes: number[];
   if (state.formData.sendFormat == 0) {
-    bytes = hexToBytes(state.formData.sendContent);
+    bytes = hexToBytes(state.formData.sendContent.trim());
   } else {
-    bytes = asciiToBytes(state.formData.sendContent);
+    bytes = asciiToBytes(state.formData.sendContent.trim());
   }
   sendLength.value = bytes.length;
 
@@ -95,7 +95,7 @@ const send = async () => {
       clearInterval(receiveIntervalId);
       receiveIntervalId = 0;
     }
-    receiveIntervalId = setInterval(read, 200);
+    receiveIntervalId = setInterval(read, 100);
 
     // if auto send then start interval
     if (state.formData.autoSend) {
@@ -166,7 +166,7 @@ function bytesToAscii(bytes: number[]): string {
 }
 
 function asciiToBytes(asciiText: string) {
-  asciiText = asciiText.replace(" ", "");
+  asciiText = asciiText.replace(/\s+/g, "");
   let bytes = [];
   for (let i = 0; i < asciiText.length; ++i) {
     const charCode = asciiText.charCodeAt(i);
@@ -176,10 +176,10 @@ function asciiToBytes(asciiText: string) {
 }
 
 function hexToBytes(hexText: string) {
-  hexText = hexText.replace(" ", "");
+  hexText = hexText.replace(/\s+/g, "");
   let bytes = [];
   for (let i = 0; i < hexText.length; i += 2) {
-    const byte = parseInt(hexText.substring(i, 2), 16);
+    const byte = parseInt(hexText.substr(i, 2), 16);
     bytes.push(byte);
   }
   return bytes;
