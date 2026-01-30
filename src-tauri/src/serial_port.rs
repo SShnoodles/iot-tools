@@ -1,8 +1,8 @@
-use std::collections::HashMap;
-use std::sync::{Mutex};
-use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use lazy_static::lazy_static;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Mutex;
+use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SerialPortConfig {
@@ -13,14 +13,14 @@ pub struct SerialPortConfig {
 }
 
 lazy_static! {
-    static ref SERIAL_PORT_CONFIG: Mutex<SerialPortConfig> = Mutex::new(SerialPortConfig{
+    static ref SERIAL_PORT_CONFIG: Mutex<SerialPortConfig> = Mutex::new(SerialPortConfig {
         data_bits: 8,
         stop_bits: 1,
         parity: "None".to_string(),
         flow_control: "None".to_string(),
     });
-
-    static ref PORTS: Mutex<HashMap<String, Box<dyn serialport::SerialPort>>> = Mutex::new(HashMap::new());
+    static ref PORTS: Mutex<HashMap<String, Box<dyn serialport::SerialPort>>> =
+        Mutex::new(HashMap::new());
 }
 pub fn convert_to_data_bits(bits: i8) -> serialport::DataBits {
     match bits {
@@ -88,12 +88,12 @@ pub fn get_serial_port_config() -> SerialPortConfig {
         stop_bits: config.stop_bits,
         parity: config.parity.to_string(),
         flow_control: config.flow_control.to_string(),
-    }
+    };
 }
 
 // 打开串口
 #[tauri::command]
-pub fn open_serial_port(port_name: &str, baud_rate: u32) -> Result<String, String>{
+pub fn open_serial_port(port_name: &str, baud_rate: u32) -> Result<String, String> {
     if PORTS.lock().unwrap().contains_key(port_name) {
         return Ok("Opened".to_string());
     }
@@ -109,7 +109,7 @@ pub fn open_serial_port(port_name: &str, baud_rate: u32) -> Result<String, Strin
         Ok(port) => {
             PORTS.lock().unwrap().insert(port_name.to_string(), port);
             Ok("Opened".to_string())
-        },
+        }
         Err(e) => Err(e.description),
     };
 }

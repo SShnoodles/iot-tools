@@ -4,6 +4,7 @@ import SerialPort from "./components/SerialPort.vue";
 import Modbus from "./components/Modbus.vue";
 
 const activeTab = ref("serialPort");
+
 </script>
 
 <template>

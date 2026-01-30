@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {ref, reactive, onMounted} from "vue";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import SerialPortSetting from "./SerialPortSetting.vue";
 import {SerialPort, Option} from "../types/serial";
 import * as dayjs from 'dayjs';
