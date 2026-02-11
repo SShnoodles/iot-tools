@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "iot-tools",
-        "width": 1000,
-        "height": 800
+        "width": 880,
+        "height": 770
       }
     ],
     "security": {

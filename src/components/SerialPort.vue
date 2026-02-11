@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import {ref, reactive, onMounted} from "vue";
+import { ref, reactive, onMounted, onUnmounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from '@tauri-apps/api/event';
 import SerialPortSetting from "./SerialPortSetting.vue";
-import {SerialPort, Option, SerialPortLog} from "../types/serial";
-import * as dayjs from 'dayjs';
+import { SerialPort, Option, SerialPortLog } from "../types/serial";
 import { ElMessage } from 'element-plus';
 
 const vForm = ref();
@@ -20,7 +20,6 @@ const state = reactive({
     receiveFormat: 0,
     receiveContent: "",
     showSend: false,
-    showTime: false,
   } as SerialPort,
   serialPortOptions: [] as Option[],
   baudRateOptions: [{
@@ -56,11 +55,11 @@ const state = reactive({
 })
 
 let sendIntervalId = 0;
-let receiveIntervalId = 0;
 const isOpen = ref(false);
 const isSend = ref(false);
 const receiveLength = ref(0);
 const sendLength = ref(0);
+const unlisten = ref();
 
 const open = async () => {
   if (!state.formData.serialPort || state.formData.serialPort == "") {
@@ -71,9 +70,20 @@ const open = async () => {
     ElMessage.error("请选择波特率！");
     return;
   }
+  const isOpen = await invoke<boolean>("is_serial_port_open", {portName: state.formData.serialPort});
+  if (isOpen) {
+    ElMessage.error("串口已打开！");
+    return;
+  }
+
   invoke<String>("open_serial_port", {portName: state.formData.serialPort, baudRate: state.formData.baudRate})
       .then(() => cleanReturn())
       .catch(e => ElMessage.error(e));
+
+  if (unlisten.value) {
+    unlisten.value();
+  }
+  read();
 }
 
 const send = async () => {
@@ -91,12 +101,6 @@ const send = async () => {
   }
   const writeSuccess = await invoke<Boolean>("write_to_serial_port", {portName: state.formData.serialPort, content: bytes});
   if (writeSuccess) {
-    if (receiveIntervalId != 0) {
-      clearInterval(receiveIntervalId);
-      receiveIntervalId = 0;
-    }
-    receiveIntervalId = setInterval(read, 100);
-
     // if auto send then start interval
     if (state.formData.autoSend) {
       sendIntervalId = setInterval(() => {
@@ -107,33 +111,15 @@ const send = async () => {
 }
 
 const stop = async () => {
-  if (receiveIntervalId != 0) {
-    clearInterval(receiveIntervalId);
-    receiveIntervalId = 0;
-  }
   if (sendIntervalId != 0) {
     clearInterval(sendIntervalId);
     sendIntervalId = 0;
   }
+  if (unlisten.value) {
+    unlisten.value();
+  }
   await invoke("stop_serial_port", {portName: state.formData.serialPort})
   await cleanReturn()
-}
-
-const read = async ()=> {
-  let res = await invoke<SerialPortLog[]>("get_serial_port_logs");
-  if (res.length == 0) return;
-
-  let time = "";
-  if (state.formData.showTime) {
-    time = dayjs().format("HH:mm:ss.SSS") + "[" + res.length + "]: ";
-  }
-  let content: string;
-  if (state.formData.receiveFormat == 0) {
-    content = bytesToHex(res[res.length - 1].data);
-  } else {
-    content = bytesToAscii(res[res.length - 1].data);
-  }
-  state.formData.receiveContent += time + content + "\n";
 }
 
 const getPortList = async () => {
@@ -152,8 +138,34 @@ const cleanReturn = async () => {
   isOpen.value = await invoke<boolean>("is_serial_port_open", {portName: state.formData.serialPort});
 }
 
+const read = async () => {
+  unlisten.value = await listen<SerialPortLog>('serial_port_log', (event) => {
+    let content: string;
+    if (state.formData.receiveFormat == 0) {
+      content = bytesToHex(event.payload.data);
+    } else {
+      content = bytesToAscii(event.payload.data);
+    }
+    if (event.payload.direction == "TX") {
+      state.formData.receiveContent += event.payload.timestamp + " " + event.payload.direction + " -> " + content + "\n";
+    } else {
+      state.formData.receiveContent += event.payload.timestamp + " " + event.payload.direction + " -> " + content + "\n";
+    }
+    if (state.formData.receiveContent.length > 100) {
+      state.formData.receiveContent = state.formData.receiveContent.slice(-50);
+    }
+    receiveLength.value += event.payload.data.length;
+  });
+}
+
 onMounted(() => {
   getPortList();
+})
+
+onUnmounted(() => {
+  if (unlisten.value) {
+    unlisten.value();
+  }
 })
 
 function bytesToHex(bytes: number[]) {
@@ -178,7 +190,7 @@ function hexToBytes(hexText: string) {
   hexText = hexText.replace(/\s+/g, "");
   let bytes = [];
   for (let i = 0; i < hexText.length; i += 2) {
-    const byte = parseInt(hexText.substr(i, 2), 16);
+    const byte = parseInt(hexText.substring(i, i + 2), 16);
     bytes.push(byte);
   }
   return bytes;
@@ -215,10 +227,10 @@ function hexToBytes(hexText: string) {
   <el-form :model="state.formData" label-position="right" label-width="80px" size="small">
     <el-form-item label="发送设置">
       <el-radio-group v-model="state.formData.sendFormat">
-        <el-radio v-for="(item, index) in state.sendFormatOptions" :key="index" :label="item.value">{{item.label}}</el-radio>
+        <el-radio v-for="(item, index) in state.sendFormatOptions" :value="item.value">{{item.label}}</el-radio>
       </el-radio-group>
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-      <el-text>自动重发</el-text>
+      <el-text>轮询发送</el-text>
       <el-switch v-model="state.formData.autoSend"></el-switch>
       <el-input-number v-model="state.formData.autoSendTimes" :min="200" :max="1000000" :precision="0" :step="1" controls-position="right">
       </el-input-number>
@@ -230,10 +242,8 @@ function hexToBytes(hexText: string) {
 
     <el-form-item label="接收设置">
       <el-radio-group v-model="state.formData.receiveFormat">
-        <el-radio v-for="(item, index) in state.receiveFormatOptions" :key="index" :label="item.value">{{item.label}}</el-radio>
+        <el-radio v-for="(item, index) in state.receiveFormatOptions" :value="item.value">{{item.label}}</el-radio>
       </el-radio-group>
-      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-      <el-checkbox v-model="state.formData.showTime" label="显示时间" value="true" />
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
       <el-button @click="cleanReturn">清空</el-button>
     </el-form-item>

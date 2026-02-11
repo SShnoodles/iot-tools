@@ -17,7 +17,7 @@ export interface Option {
 }
 
 export interface SerialPortLog {
-  operation: "TX" | "RX";
+  direction: "TX" | "RX";
   data: number[];
   timestamp: number;
 }
