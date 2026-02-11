@@ -12,7 +12,7 @@ pub fn run() {
             serial_port::open_serial_port,
             serial_port::stop_serial_port,
             serial_port::write_to_serial_port,
-            serial_port::read_from_serial_port,
+            serial_port::get_serial_port_logs,
             serial_port::is_serial_port_open,
         ])
         .run(tauri::generate_context!())

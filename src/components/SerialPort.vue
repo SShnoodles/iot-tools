@@ -2,7 +2,7 @@
 import {ref, reactive, onMounted} from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import SerialPortSetting from "./SerialPortSetting.vue";
-import {SerialPort, Option} from "../types/serial";
+import {SerialPort, Option, SerialPortLog} from "../types/serial";
 import * as dayjs from 'dayjs';
 import { ElMessage } from 'element-plus';
 
@@ -120,19 +120,18 @@ const stop = async () => {
 }
 
 const read = async ()=> {
-  let res = await invoke<number[]>("read_from_serial_port", {portName: state.formData.serialPort});
-  receiveLength.value = res.length;
+  let res = await invoke<SerialPortLog[]>("get_serial_port_logs");
   if (res.length == 0) return;
 
   let time = "";
   if (state.formData.showTime) {
-    time = dayjs().format("YYYY-MM-DD HH:mm:ss.SSS") + "[" + res.length + "]: ";
+    time = dayjs().format("HH:mm:ss.SSS") + "[" + res.length + "]: ";
   }
   let content: string;
   if (state.formData.receiveFormat == 0) {
-    content = bytesToHex(res);
+    content = bytesToHex(res[res.length - 1].data);
   } else {
-    content = bytesToAscii(res);
+    content = bytesToAscii(res[res.length - 1].data);
   }
   state.formData.receiveContent += time + content + "\n";
 }
@@ -226,7 +225,7 @@ function hexToBytes(hexText: string) {
     </el-form-item>
 
     <el-form-item label="发送内容">
-      <el-input type="textarea" v-model="state.formData.sendContent" rows="4"></el-input>
+      <el-input type="textarea" v-model="state.formData.sendContent" :rows="4"></el-input>
     </el-form-item>
 
     <el-form-item label="接收设置">
@@ -239,7 +238,7 @@ function hexToBytes(hexText: string) {
       <el-button @click="cleanReturn">清空</el-button>
     </el-form-item>
     <el-form-item label="接收内容">
-      <el-input type="textarea" v-model="state.formData.receiveContent" rows="22"></el-input>
+      <el-input type="textarea" v-model="state.formData.receiveContent" :rows="22"></el-input>
     </el-form-item>
   </el-form>
   <SerialPortSetting ref="serialPortSetting"></SerialPortSetting>

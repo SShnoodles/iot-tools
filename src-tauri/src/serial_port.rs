@@ -1,8 +1,10 @@
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Mutex;
-use std::time::Duration;
+use std::collections::{HashMap, VecDeque};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SerialPortConfig {
@@ -12,16 +14,29 @@ pub struct SerialPortConfig {
     flow_control: String,
 }
 
-lazy_static! {
-    static ref SERIAL_PORT_CONFIG: Mutex<SerialPortConfig> = Mutex::new(SerialPortConfig {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SerialPortLog {
+    pub operation: String, // "RX" or "TX"
+    pub data: Vec<u8>,
+    pub timestamp: u64,
+}
+
+static SERIAL_PORT_CONFIG: Lazy<Mutex<SerialPortConfig>> = Lazy::new(|| {
+    Mutex::new(SerialPortConfig {
         data_bits: 8,
         stop_bits: 1,
         parity: "None".to_string(),
         flow_control: "None".to_string(),
-    });
-    static ref PORTS: Mutex<HashMap<String, Box<dyn serialport::SerialPort>>> =
-        Mutex::new(HashMap::new());
-}
+    })
+});
+static PORTS: Lazy<Mutex<HashMap<String, Box<dyn serialport::SerialPort>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+static SERIAL_PORT_LOGS: Lazy<Mutex<VecDeque<SerialPortLog>>> =
+    Lazy::new(|| Mutex::new(VecDeque::new()));
+static SERIAL_PORT_ACTIVE: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+const MAX_LOGS: usize = 1000;
 pub fn convert_to_data_bits(bits: i8) -> serialport::DataBits {
     match bits {
         5 => serialport::DataBits::Five,
@@ -55,6 +70,37 @@ pub fn convert_to_flow_control(s: &str) -> serialport::FlowControl {
         "Software" => serialport::FlowControl::Software,
         "Hardware" => serialport::FlowControl::Hardware,
         _ => panic!("Invalid string of flow control"),
+    }
+}
+
+fn get_current_timestamp() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or(Duration::from_secs(0))
+        .as_millis() as u64
+}
+
+fn add_log(operation: &str, data: Vec<u8>) {
+    let mut logs = SERIAL_PORT_LOGS.lock().unwrap();
+    logs.push_back(SerialPortLog {
+        operation: operation.to_string(),
+        data,
+        timestamp: get_current_timestamp(),
+    });
+    if logs.len() > MAX_LOGS {
+        logs.pop_front();
+    }
+}
+
+fn read_from_serial_port(port_name: &str) {
+    let mut serial_buf: Vec<u8> = Vec::new();
+    if let Some(port) = PORTS.lock().unwrap().get_mut(port_name) {
+        if let Err(_) = port.read(serial_buf.as_mut_slice()) {
+            return;
+        }
+        if !serial_buf.is_empty() {
+            add_log("RX", serial_buf.clone());
+        }
     }
 }
 
@@ -108,6 +154,22 @@ pub fn open_serial_port(port_name: &str, baud_rate: u32) -> Result<String, Strin
     return match s {
         Ok(port) => {
             PORTS.lock().unwrap().insert(port_name.to_string(), port);
+
+            // 启动后台线程，每200毫秒读取一次数据
+            let active = Arc::new(AtomicBool::new(true));
+            SERIAL_PORT_ACTIVE
+                .lock()
+                .unwrap()
+                .insert(port_name.to_string(), active.clone());
+
+            let port_name_clone = port_name.to_string();
+            thread::spawn(move || {
+                while active.load(Ordering::Relaxed) {
+                    read_from_serial_port(&port_name_clone);
+                    thread::sleep(Duration::from_millis(200));
+                }
+            });
+
             Ok("Opened".to_string())
         }
         Err(e) => Err(e.description),
@@ -117,33 +179,32 @@ pub fn open_serial_port(port_name: &str, baud_rate: u32) -> Result<String, Strin
 // 关闭串口
 #[tauri::command]
 pub fn stop_serial_port(port_name: &str) {
+    // 停止读取线程
+    if let Some(active) = SERIAL_PORT_ACTIVE.lock().unwrap().remove(port_name) {
+        active.store(false, Ordering::Relaxed);
+    }
+
+    // 关闭端口
     if PORTS.lock().unwrap().contains_key(port_name) {
         PORTS.lock().unwrap().remove(port_name);
-        drop(PORTS.lock().unwrap().get_mut(port_name));
     }
 }
 
 // 写入数据到串口
 #[tauri::command]
-pub fn write_to_serial_port(port_name: &str, content: Vec<u8>) -> bool {
-    if let Some(port) = PORTS.lock().unwrap().get_mut(port_name) {
+pub fn write_to_serial_port(port_name: &str, content: Vec<u8>) {
+    let result = if let Some(port) = PORTS.lock().unwrap().get_mut(port_name) {
         if let Ok(_) = port.write(&content) {
-            return true;
+            add_log("TX", content);
         }
-    }
-    return false;
+    };
 }
 
-// 从串口读取数据
+// 获取串口日志
 #[tauri::command]
-pub fn read_from_serial_port(port_name: &str) -> Vec<u8> {
-    let mut serial_buf: Vec<u8> = Vec::new();
-    if let Some(port) = PORTS.lock().unwrap().get_mut(port_name) {
-        if let Err(_) = port.read(serial_buf.as_mut_slice()) {
-            return serial_buf;
-        }
-    }
-    serial_buf
+pub fn get_serial_port_logs() -> Vec<SerialPortLog> {
+    let logs = SERIAL_PORT_LOGS.lock().unwrap();
+    logs.iter().cloned().collect()
 }
 
 // 检查串口是否已打开
