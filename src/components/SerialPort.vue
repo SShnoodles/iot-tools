@@ -227,7 +227,7 @@ function hexToBytes(hexText: string) {
   <el-form :model="state.formData" label-position="right" label-width="80px" size="small">
     <el-form-item label="发送设置">
       <el-radio-group v-model="state.formData.sendFormat">
-        <el-radio v-for="(item, index) in state.sendFormatOptions" :value="item.value">{{item.label}}</el-radio>
+        <el-radio v-for="item in state.sendFormatOptions" :value="item.value">{{item.label}}</el-radio>
       </el-radio-group>
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
       <el-text>轮询发送</el-text>
@@ -242,7 +242,7 @@ function hexToBytes(hexText: string) {
 
     <el-form-item label="接收设置">
       <el-radio-group v-model="state.formData.receiveFormat">
-        <el-radio v-for="(item, index) in state.receiveFormatOptions" :value="item.value">{{item.label}}</el-radio>
+        <el-radio v-for="item in state.receiveFormatOptions" :value="item.value">{{item.label}}</el-radio>
       </el-radio-group>
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
       <el-button @click="cleanReturn">清空</el-button>
