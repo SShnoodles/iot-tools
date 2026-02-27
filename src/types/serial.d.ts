@@ -18,6 +18,7 @@ export interface Option {
 
 export interface SerialPortLog {
   direction: "TX" | "RX";
-  data: number[];
-  timestamp: number;
+  content_hex: string;  // HEX format
+  content_ascii: string; // ASCII format
+  timestamp: string;
 }

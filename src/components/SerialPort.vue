@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from "vue";
+import { ref, reactive, onMounted, onUnmounted, nextTick } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from '@tauri-apps/api/event';
 import SerialPortSetting from "./SerialPortSetting.vue";
@@ -8,6 +8,7 @@ import { ElMessage } from 'element-plus';
 
 const vForm = ref();
 const serialPortSetting = ref();
+const receiveTextarea = ref<HTMLTextAreaElement>();
 
 const state = reactive({
   formData: {
@@ -70,43 +71,65 @@ const open = async () => {
     ElMessage.error("请选择波特率！");
     return;
   }
-  const isOpen = await invoke<boolean>("is_serial_port_open", {portName: state.formData.serialPort});
-  if (isOpen) {
+  const isOpenCheck = await invoke<boolean>("is_serial_port_open", {portName: state.formData.serialPort});
+  if (isOpenCheck) {
     ElMessage.error("串口已打开！");
     return;
   }
 
-  invoke<String>("open_serial_port", {portName: state.formData.serialPort, baudRate: state.formData.baudRate})
-      .then(() => cleanReturn())
-      .catch(e => ElMessage.error(e));
-
-  if (unlisten.value) {
-    unlisten.value();
+  try {
+    const isOpen = await invoke<string>("open_serial_port", {portName: state.formData.serialPort, baudRate: state.formData.baudRate});
+    if (isOpen != "Opened") {
+      ElMessage.error(isOpen);
+      return;
+    }
+    await cleanReturn();
+    
+    if (unlisten.value) {
+      unlisten.value();
+    }
+    await read();
+    ElMessage.success("串口已打开");
+  } catch (e) {
+    ElMessage.error("打开串口失败: " + e);
   }
-  read();
 }
 
 const send = async () => {
-  let bytes: number[];
-  if (state.formData.sendFormat == 0) {
-    bytes = hexToBytes(state.formData.sendContent.trim());
-  } else {
-    bytes = asciiToBytes(state.formData.sendContent.trim());
+  if (!state.formData.sendContent.trim()) {
+    ElMessage.warning("请输入发送内容");
+    return;
   }
-  sendLength.value = bytes.length;
 
   if (sendIntervalId != 0) {
     clearInterval(sendIntervalId);
     sendIntervalId = 0;
   }
-  const writeSuccess = await invoke<Boolean>("write_to_serial_port", {portName: state.formData.serialPort, content: bytes});
-  if (writeSuccess) {
+  
+  try {
+    await invoke("write_to_serial_port", {
+      portName: state.formData.serialPort, 
+      content: state.formData.sendContent.trim(),
+      sendFormat: state.formData.sendFormat
+    });
+    
     // if auto send then start interval
     if (state.formData.autoSend) {
-      sendIntervalId = setInterval(() => {
-        invoke<Boolean>("write_to_serial_port", {portName: state.formData.serialPort, content: bytes})
+      sendIntervalId = setInterval(async () => {
+        try {
+          await invoke("write_to_serial_port", {
+            portName: state.formData.serialPort, 
+            content: state.formData.sendContent.trim(),
+            sendFormat: state.formData.sendFormat
+          });
+        } catch (e) {
+          ElMessage.error("发送失败: " + e);
+        }
       }, state.formData.autoSendTimes);
     }
+    ElMessage.success("发送成功");
+  } catch (e) {
+    ElMessage.error("发送失败: " + e);
   }
 }
 
@@ -140,21 +163,26 @@ const cleanReturn = async () => {
 
 const read = async () => {
   unlisten.value = await listen<SerialPortLog>('serial_port_log', (event) => {
-    let content: string;
-    if (state.formData.receiveFormat == 0) {
-      content = bytesToHex(event.payload.data);
-    } else {
-      content = bytesToAscii(event.payload.data);
-    }
+    const content = state.formData.receiveFormat === 0 ? event.payload.content_hex : event.payload.content_ascii;
     if (event.payload.direction == "TX") {
       state.formData.receiveContent += event.payload.timestamp + " " + event.payload.direction + " -> " + content + "\n";
     } else {
-      state.formData.receiveContent += event.payload.timestamp + " " + event.payload.direction + " -> " + content + "\n";
+      state.formData.receiveContent += event.payload.timestamp + " " + event.payload.direction + " <- " + content + "\n";
     }
-    if (state.formData.receiveContent.length > 100) {
-      state.formData.receiveContent = state.formData.receiveContent.slice(-50);
+    if (state.formData.receiveContent.split('\n').length > 100) {
+      state.formData.receiveContent = state.formData.receiveContent.split('\n').slice(-50).join('\n');
     }
-    receiveLength.value += event.payload.data.length;
+    receiveLength.value += content.length;
+    
+    // 自动滚动到底部
+    nextTick(() => {
+      if (receiveTextarea.value) {
+        const textarea = (receiveTextarea.value as any)?.$el?.querySelector('textarea') || receiveTextarea.value;
+        if (textarea) {
+          textarea.scrollTop = textarea.scrollHeight;
+        }
+      }
+    });
   });
 }
 
@@ -167,34 +195,6 @@ onUnmounted(() => {
     unlisten.value();
   }
 })
-
-function bytesToHex(bytes: number[]) {
-  return bytes.map(byte => byte.toString(16).padStart(2, "0")).join(" ");
-}
-
-function bytesToAscii(bytes: number[]): string {
-  return bytes.map(byte => String.fromCharCode(byte)).join("");
-}
-
-function asciiToBytes(asciiText: string) {
-  asciiText = asciiText.replace(/\s+/g, "");
-  let bytes = [];
-  for (let i = 0; i < asciiText.length; ++i) {
-    const charCode = asciiText.charCodeAt(i);
-    bytes.push(charCode);
-  }
-  return bytes;
-}
-
-function hexToBytes(hexText: string) {
-  hexText = hexText.replace(/\s+/g, "");
-  let bytes = [];
-  for (let i = 0; i < hexText.length; i += 2) {
-    const byte = parseInt(hexText.substring(i, i + 2), 16);
-    bytes.push(byte);
-  }
-  return bytes;
-}
 </script>
 
 <template>
@@ -217,9 +217,8 @@ function hexToBytes(hexText: string) {
     </el-form-item>
 
     <el-form-item>
-      <el-button type="danger" @click="stop">停止</el-button>
-      <el-button type="primary" @click="send" v-if="isOpen" :disabled="isSend">发送</el-button>
-      <el-button type="primary" @click="open" v-else>打开</el-button>
+      <el-button type="primary" @click="open" v-if="!isOpen">打开</el-button>
+      <el-button type="primary" @click="stop" v-else>关闭</el-button>
     </el-form-item>
 
   </el-form>
@@ -234,6 +233,8 @@ function hexToBytes(hexText: string) {
       <el-switch v-model="state.formData.autoSend"></el-switch>
       <el-input-number v-model="state.formData.autoSendTimes" :min="200" :max="1000000" :precision="0" :step="1" controls-position="right">
       </el-input-number>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <el-button type="primary" @click="send" v-if="isOpen" :disabled="isSend">发送</el-button>
     </el-form-item>
 
     <el-form-item label="发送内容">
@@ -248,7 +249,7 @@ function hexToBytes(hexText: string) {
       <el-button @click="cleanReturn">清空</el-button>
     </el-form-item>
     <el-form-item label="接收内容">
-      <el-input type="textarea" v-model="state.formData.receiveContent" :rows="22"></el-input>
+      <el-input type="textarea" ref="receiveTextarea" v-model="state.formData.receiveContent" :rows="22"></el-input>
     </el-form-item>
   </el-form>
   <SerialPortSetting ref="serialPortSetting"></SerialPortSetting>
@@ -268,3 +269,4 @@ function hexToBytes(hexText: string) {
     </el-col>
   </el-row>
 </template>
+

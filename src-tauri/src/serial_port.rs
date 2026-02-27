@@ -17,8 +17,9 @@ pub struct SerialPortConfig {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SerialPortLog {
-    pub direction: String, // "RX" or "TX"
-    pub data: Vec<u8>,
+    pub direction: String,     // "RX" or "TX"
+    pub content_hex: String,   // HEX format
+    pub content_ascii: String, // ASCII format
     pub timestamp: String,
 }
 
@@ -71,23 +72,71 @@ pub fn convert_to_flow_control(s: &str) -> serialport::FlowControl {
     }
 }
 
-fn add_log(app_handle: &tauri::AppHandle, direction: &str, data: Vec<u8>) {
+// Conversion functions
+fn bytes_to_hex(bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .map(|byte| format!("{:02x}", byte))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn bytes_to_ascii(bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .map(|&byte| {
+            if byte >= 32 && byte <= 126 {
+                (byte as char).to_string()
+            } else {
+                format!("\\x{:02x}", byte)
+            }
+        })
+        .collect()
+}
+
+fn ascii_to_bytes(text: &str) -> Vec<u8> {
+    text.as_bytes().to_vec()
+}
+
+fn hex_to_bytes(hex_text: &str) -> Result<Vec<u8>, String> {
+    let hex_text = hex_text
+        .trim()
+        .replace(" ", "")
+        .replace("\n", "")
+        .replace("\r", "");
+    if hex_text.len() % 2 != 0 {
+        return Err("Hex string length must be even".to_string());
+    }
+
+    let mut bytes = Vec::new();
+    for i in (0..hex_text.len()).step_by(2) {
+        match u8::from_str_radix(&hex_text[i..i + 2], 16) {
+            Ok(byte) => bytes.push(byte),
+            Err(_) => return Err(format!("Invalid hex character at position {}", i)),
+        }
+    }
+    Ok(bytes)
+}
+
+fn add_log(app_handle: &tauri::AppHandle, direction: &str, data: &[u8]) {
     let log = SerialPortLog {
         direction: direction.to_string(),
-        data,
+        content_hex: bytes_to_hex(data),
+        content_ascii: bytes_to_ascii(data),
         timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
     };
     let _ = app_handle.emit("serial_port_log", &log);
 }
 
 fn read_from_serial_port(port_name: &str, app_handle: &tauri::AppHandle) {
-    let mut serial_buf: Vec<u8> = Vec::new();
+    let mut serial_buf: Vec<u8> = vec![0; 1024];
     if let Some(port) = PORTS.lock().unwrap().get_mut(port_name) {
-        if let Err(_) = port.read(serial_buf.as_mut_slice()) {
-            return;
-        }
-        if !serial_buf.is_empty() {
-            add_log(app_handle, "RX", serial_buf.clone());
+        match port.read(&mut serial_buf) {
+            Ok(n) if n > 0 => {
+                serial_buf.truncate(n);
+                add_log(app_handle, "RX", &serial_buf);
+            }
+            _ => {}
         }
     }
 }
@@ -159,7 +208,7 @@ pub fn open_serial_port(
             thread::spawn(move || {
                 while active.load(Ordering::Relaxed) {
                     read_from_serial_port(&port_name_clone, &app_handle);
-                    thread::sleep(Duration::from_millis(200));
+                    thread::sleep(Duration::from_millis(100));
                 }
             });
 
@@ -185,11 +234,31 @@ pub fn stop_serial_port(port_name: &str) {
 
 // 写入数据到串口
 #[tauri::command]
-pub fn write_to_serial_port(window: tauri::Window, port_name: &str, content: Vec<u8>) {
+pub fn write_to_serial_port(
+    window: tauri::Window,
+    port_name: &str,
+    content: String,
+    send_format: i32,
+) -> Result<(), String> {
+    // Convert content to bytes based on format
+    let bytes = if send_format == 0 {
+        // HEX format
+        hex_to_bytes(&content)?
+    } else {
+        // ASCII format
+        ascii_to_bytes(&content)
+    };
+
     if let Some(port) = PORTS.lock().unwrap().get_mut(port_name) {
-        if let Ok(_) = port.write(&content) {
-            add_log(window.app_handle(), "TX", content);
+        match port.write(&bytes) {
+            Ok(_) => {
+                add_log(window.app_handle(), "TX", &bytes);
+                Ok(())
+            }
+            Err(e) => Err(e.to_string()),
         }
+    } else {
+        Err("Serial port not open".to_string())
     }
 }
 
