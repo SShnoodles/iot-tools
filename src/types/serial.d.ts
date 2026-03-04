@@ -21,4 +21,5 @@ export interface SerialPortLog {
   content_hex: string;  // HEX format
   content_ascii: string; // ASCII format
   timestamp: string;
+  new_group: boolean;
 }

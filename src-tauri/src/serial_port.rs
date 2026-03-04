@@ -21,6 +21,7 @@ pub struct SerialPortLog {
     pub content_hex: String,   // HEX format
     pub content_ascii: String, // ASCII format
     pub timestamp: String,
+    pub new_group: bool, // true 表示距上次超过 50ms，前端可换行分组
 }
 
 static SERIAL_PORT_CONFIG: Lazy<Mutex<SerialPortConfig>> = Lazy::new(|| {
@@ -118,27 +119,49 @@ fn hex_to_bytes(hex_text: &str) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
-fn add_log(app_handle: &tauri::AppHandle, direction: &str, data: &[u8]) {
+fn add_log(app_handle: &tauri::AppHandle, direction: &str, data: &[u8], new_group: bool) {
     let log = SerialPortLog {
         direction: direction.to_string(),
         content_hex: bytes_to_hex(data),
         content_ascii: bytes_to_ascii(data),
         timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
+        new_group,
     };
     let _ = app_handle.emit("serial_port_log", &log);
 }
 
-fn read_from_serial_port(port_name: &str, app_handle: &tauri::AppHandle) {
-    let mut serial_buf: Vec<u8> = vec![0; 1024];
-    if let Some(port) = PORTS.lock().unwrap().get_mut(port_name) {
-        match port.read(&mut serial_buf) {
-            Ok(n) if n > 0 => {
-                serial_buf.truncate(n);
-                add_log(app_handle, "RX", &serial_buf);
+fn start_read_thread(port_name: String, app_handle: tauri::AppHandle, active: Arc<AtomicBool>) {
+    thread::spawn(move || {
+        let mut buf = [0u8; 1024];
+        let mut last_rx = std::time::Instant::now();
+
+        while active.load(Ordering::Relaxed) {
+            let result = {
+                let mut ports = PORTS.lock().unwrap();
+                match ports.get_mut(&port_name) {
+                    Some(port) => port.read(&mut buf).map(|n| buf[..n].to_vec()),
+                    None => break,
+                }
+            };
+
+            match result {
+                Ok(data) if !data.is_empty() => {
+                    // 距上次收到数据超过 50ms，前端换行分组显示
+                    let new_group = last_rx.elapsed().as_millis() > 50;
+                    last_rx = std::time::Instant::now();
+                    add_log(&app_handle, "RX", &data, new_group);
+                }
+                // WouldBlock / TimedOut 是正常的"暂时没数据"，短暂休眠避免空转
+                Err(ref e)
+                    if e.kind() == std::io::ErrorKind::TimedOut
+                        || e.kind() == std::io::ErrorKind::WouldBlock =>
+                {
+                    thread::sleep(Duration::from_millis(1));
+                }
+                _ => {}
             }
-            _ => {}
         }
-    }
+    });
 }
 
 // 获取串口列表
@@ -190,27 +213,20 @@ pub fn open_serial_port(
         .stop_bits(convert_to_stop_bits(config.stop_bits))
         .parity(convert_to_parity(config.parity.as_str()))
         .flow_control(convert_to_flow_control(config.flow_control.as_str()))
-        .timeout(Duration::from_millis(200))
+        .timeout(Duration::from_millis(1)) // 快速返回，不阻塞读取循环
         .open();
     return match s {
         Ok(port) => {
             PORTS.lock().unwrap().insert(port_name.to_string(), port);
 
-            // 启动后台线程，每200毫秒读取一次数据
             let active = Arc::new(AtomicBool::new(true));
             SERIAL_PORT_ACTIVE
                 .lock()
                 .unwrap()
                 .insert(port_name.to_string(), active.clone());
 
-            let port_name_clone = port_name.to_string();
             let app_handle = window.app_handle().clone();
-            thread::spawn(move || {
-                while active.load(Ordering::Relaxed) {
-                    read_from_serial_port(&port_name_clone, &app_handle);
-                    thread::sleep(Duration::from_millis(100));
-                }
-            });
+            start_read_thread(port_name.to_string(), app_handle, active);
 
             Ok("Opened".to_string())
         }
@@ -252,7 +268,7 @@ pub fn write_to_serial_port(
     if let Some(port) = PORTS.lock().unwrap().get_mut(port_name) {
         match port.write(&bytes) {
             Ok(_) => {
-                add_log(window.app_handle(), "TX", &bytes);
+                add_log(window.app_handle(), "TX", &bytes, false);
                 Ok(())
             }
             Err(e) => Err(e.to_string()),
