@@ -222,9 +222,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (unlisten.value) {
-    unlisten.value();
-  }
+  stop();
 })
 </script>
 
@@ -249,7 +247,7 @@ onUnmounted(() => {
 
     <el-form-item>
       <el-button type="primary" @click="open" v-if="!isOpen">打开</el-button>
-      <el-button type="primary" @click="stop" v-else>关闭</el-button>
+      <el-button type="danger" @click="stop" v-else>关闭</el-button>
     </el-form-item>
 
   </el-form>
