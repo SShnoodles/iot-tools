@@ -17,5 +17,6 @@ pnpm tauri dev
 ```
 
 ## Overview
-[![6378ae63f608fbc8f35eefbe5bf78a48.png](https://s1.imagehub.cc/images/2024/04/23/6378ae63f608fbc8f35eefbe5bf78a48.png)](https://www.imagehub.cc/image/brCHhJ)
+[![ScreenShot 2026 03 05 143148 299](https://s1.imagehub.cc/images/2026/03/05/a38dd72c459d77ee1b677377f52f4942.png)](https://www.imagehub.cc/image/ScreenShot-2026-03-05-143148-299.MQKFHj)
+[![ScreenShot 2026 03 05 143239 277](https://s1.imagehub.cc/images/2026/03/05/ba4d222399080c01fcc6ae8392d11382.png)](https://www.imagehub.cc/image/ScreenShot-2026-03-05-143239-277.MQKqog)
 
