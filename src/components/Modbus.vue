@@ -404,7 +404,6 @@ onUnmounted(async () => {
         v-model="logContent"
         :rows="5"
         readonly
-        style="font-family: monospace;"
       />
     </el-collapse-item>
   </el-collapse>
