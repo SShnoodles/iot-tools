@@ -8,6 +8,7 @@ interface ModbusResponse {
   response_hex: string;
   values: number[];
   exception_code: number | null;
+  display_value: string;
 }
 
 interface ParsedValue {
@@ -15,6 +16,7 @@ interface ParsedValue {
   dec: number;
   hex: string;
   binary: string;
+  display_value: string;
 }
 
 const host = ref("192.168.1.1");
@@ -36,6 +38,21 @@ const logCollapse = ref<string[]>([]); // 默认折叠（空数组）
 
 const pollingTimer = ref<ReturnType<typeof setInterval> | null>(null);
 const isPolling = ref(false);
+
+const displayFormat = ref("Unsigned");
+
+const displayFormatOptions = [
+  { label: "Unsigned", value: "Unsigned" },
+  { label: "Signed", value: "Signed" },
+  { label: "Hex", value: "Hex" },
+  { label: "Binary", value: "Binary" },
+  { label: "Long", value: "Long" },
+  { label: "Long Inverse", value: "LongInverse" },
+  { label: "Float", value: "Float" },
+  { label: "Float Inverse", value: "FloatInverse" },
+  { label: "Double", value: "Double" },
+  { label: "Double Inverse", value: "DoubleInverse" },
+];
 
 const functionCodeOptions = [
   { label: "FC01 - Read Coils", value: 1 },
@@ -131,6 +148,7 @@ async function send() {
       address: startAddress.value,
       quantity: qty,
       values: vals,
+      displayFormat: displayFormat.value,
     });
 
     const ts = getTimestamp();
@@ -148,6 +166,7 @@ async function send() {
         dec: val,
         hex: "0x" + val.toString(16).toUpperCase().padStart(4, "0"),
         binary: val.toString(2).padStart(16, "0"),
+        display_value: idx === 0 ? result.display_value : "",
       }));
     }
 
@@ -301,6 +320,16 @@ onUnmounted(async () => {
         style="margin-left: 8px;"
       >{{ isPolling ? "停止刷新" : "实时刷新" }}</el-button>
     </el-form-item>
+    <el-form-item label="显示格式:" v-if="isReadFunction">
+      <el-select v-model="displayFormat" style="width: 130px">
+        <el-option
+          v-for="item in displayFormatOptions"
+          :key="item.value"
+          :label="item.label"
+          :value="item.value"
+        />
+      </el-select>
+    </el-form-item>
   </el-form>
 
   <!-- 写入数据 (FC05/FC06) -->
@@ -328,16 +357,16 @@ onUnmounted(async () => {
 
   <!-- 解析结果表格 (仅读操作) -->
   <el-table
-    v-if="isReadFunction && parsedValues.length > 0"
+    v-show="isReadFunction"
     :data="parsedValues"
     size="small"
     border
     style="width: 100%; margin-top: 4px;"
   >
-    <el-table-column prop="address" label="地址" width="80" />
-    <el-table-column prop="dec" label="十进制" width="100" />
-    <el-table-column prop="hex" label="十六进制" width="110" />
+    <el-table-column prop="address" label="地址" width="50" />
+    <el-table-column prop="hex" label="十六进制" />
     <el-table-column prop="binary" label="二进制(16位)" />
+    <el-table-column prop="display_value" :label="displayFormatOptions.find(o => o.value === displayFormat)?.label ?? displayFormat" />
   </el-table>
 
   <!-- 状态栏 -->
@@ -366,16 +395,14 @@ onUnmounted(async () => {
   <el-collapse v-model="logCollapse" style="margin-top: 8px;">
     <el-collapse-item name="log">
       <template #title>
-        <span style="font-size: 13px;">通信日志</span>
-      </template>
-      <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+        <span>通信日志</span>
         <el-button size="small" @click="clearLog">清空</el-button>
-      </div>
+      </template>
       <el-input
         type="textarea"
         ref="logTextarea"
         v-model="logContent"
-        :rows="6"
+        :rows="5"
         readonly
         style="font-family: monospace;"
       />

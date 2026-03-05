@@ -1,3 +1,4 @@
+use crate::display::DisplayFormat;
 use once_cell::sync::Lazy;
 use serde::Serialize;
 use std::net::SocketAddr;
@@ -16,6 +17,22 @@ pub struct ModbusResponse {
     pub response_hex: String,
     pub values: Vec<u16>,
     pub exception_code: Option<u8>,
+    pub display_value: String,
+}
+
+fn parse_display_format(s: &str) -> DisplayFormat {
+    match s {
+        "Signed" => DisplayFormat::Signed,
+        "Hex" => DisplayFormat::Hex,
+        "Binary" => DisplayFormat::Binary,
+        "Long" => DisplayFormat::Long,
+        "LongInverse" => DisplayFormat::LongInverse,
+        "Float" => DisplayFormat::Float,
+        "FloatInverse" => DisplayFormat::FloatInverse,
+        "Double" => DisplayFormat::Double,
+        "DoubleInverse" => DisplayFormat::DoubleInverse,
+        _ => DisplayFormat::Unsigned,
+    }
 }
 
 // ── hex helpers ──────────────────────────────────────────────────────────────
@@ -159,6 +176,7 @@ pub fn modbus_tcp_send(
     address: u16,
     quantity: u16,
     values: Vec<u16>,
+    display_format: String,
 ) -> Result<ModbusResponse, String> {
     let tid = TID.fetch_add(1, Ordering::Relaxed);
     let request_hex = to_hex(&request_frame(
@@ -202,6 +220,8 @@ pub fn modbus_tcp_send(
         }
     }; // MutexGuard released here
 
+    let fmt = parse_display_format(&display_format);
+
     match io_result {
         Ok(Ok(vals)) => {
             let response_hex = to_hex(&response_frame(
@@ -212,11 +232,13 @@ pub fn modbus_tcp_send(
                 &vals,
                 None,
             ));
+            let display_value = fmt.format(&vals);
             Ok(ModbusResponse {
                 request_hex,
                 response_hex,
                 values: vals,
                 exception_code: None,
+                display_value,
             })
         }
         Ok(Err(exc)) => {
@@ -235,6 +257,7 @@ pub fn modbus_tcp_send(
                 response_hex,
                 values: vec![],
                 exception_code: Some(code),
+                display_value: String::new(),
             })
         }
         Err(e) => {

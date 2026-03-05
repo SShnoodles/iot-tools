@@ -1,4 +1,5 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+pub mod display;
 pub mod serial_port;
 pub mod modbus_tcp;
 
