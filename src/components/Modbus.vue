@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted, nextTick } from "vue";
+import { ref, computed, onUnmounted, nextTick, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { ElMessage } from "element-plus";
 
@@ -32,6 +32,10 @@ const logContent = ref("");
 const parsedValues = ref<ParsedValue[]>([]);
 
 const logTextarea = ref<any>();
+const logCollapse = ref<string[]>([]); // 默认折叠（空数组）
+
+const pollingTimer = ref<ReturnType<typeof setInterval> | null>(null);
+const isPolling = ref(false);
 
 const functionCodeOptions = [
   { label: "FC01 - Read Coils", value: 1 },
@@ -102,6 +106,7 @@ async function connect() {
 }
 
 async function disconnect() {
+  stopPolling();
   await invoke("modbus_tcp_disconnect");
   isConnected.value = false;
   ElMessage.info("已断开连接");
@@ -170,7 +175,35 @@ function clearLog() {
   parsedValues.value = [];
 }
 
+function startPolling() {
+  if (pollingTimer.value) return;
+  isPolling.value = true;
+  send();
+  pollingTimer.value = setInterval(() => {
+    if (!sending.value) send();
+  }, 1000);
+}
+
+function stopPolling() {
+  if (pollingTimer.value) {
+    clearInterval(pollingTimer.value);
+    pollingTimer.value = null;
+  }
+  isPolling.value = false;
+}
+
+function togglePolling() {
+  if (isPolling.value) stopPolling();
+  else startPolling();
+}
+
+// 切换到写功能码时停止轮询
+watch(functionCode, () => {
+  if (!isReadFunction.value) stopPolling();
+});
+
 onUnmounted(async () => {
+  stopPolling();
   if (isConnected.value) {
     await invoke("modbus_tcp_disconnect");
   }
@@ -224,7 +257,7 @@ onUnmounted(async () => {
   <!-- 请求设置 -->
   <el-form label-position="right" label-width="80px" :inline="true" size="small" @submit.prevent>
     <el-form-item label="功能码:">
-      <el-select v-model="functionCode" style="width: 210px">
+      <el-select v-model="functionCode" style="width: 150px">
         <el-option
           v-for="item in functionCodeOptions"
           :key="item.value"
@@ -257,9 +290,16 @@ onUnmounted(async () => {
       <el-button
         type="primary"
         @click="send"
-        :disabled="!isConnected"
-        :loading="sending"
+        :disabled="!isConnected || isPolling"
+        :loading="sending && !isPolling"
       >发送</el-button>
+      <el-button
+        v-if="isReadFunction"
+        :type="isPolling ? 'warning' : 'success'"
+        @click="togglePolling"
+        :disabled="!isConnected"
+        style="margin-left: 8px;"
+      >{{ isPolling ? "停止刷新" : "实时刷新" }}</el-button>
     </el-form-item>
   </el-form>
 
@@ -283,23 +323,6 @@ onUnmounted(async () => {
       <el-text style="margin-left: 8px; color: #909399;">
         {{ functionCode === 5 ? "(0=OFF, 1=ON)" : "(0-65535)" }}
       </el-text>
-    </el-form-item>
-  </el-form>
-
-  <!-- 通信日志 -->
-  <el-form label-position="right" label-width="80px" size="small">
-    <el-form-item label="日志设置:">
-      <el-button size="small" @click="clearLog">清空</el-button>
-    </el-form-item>
-    <el-form-item label="通信日志:">
-      <el-input
-        type="textarea"
-        ref="logTextarea"
-        v-model="logContent"
-        :rows="5"
-        readonly
-        style="font-family: monospace;"
-      />
     </el-form-item>
   </el-form>
 
@@ -329,7 +352,33 @@ onUnmounted(async () => {
         >
           {{ isConnected ? "已连接" : "未连接" }}
         </el-tag>
+        <el-tag
+          v-if="isPolling"
+          type="warning"
+          size="small"
+          style="margin-left: 8px;"
+        >实时刷新中</el-tag>
       </el-text>
     </el-col>
   </el-row>
+
+  <!-- 通信日志（底部，默认折叠） -->
+  <el-collapse v-model="logCollapse" style="margin-top: 8px;">
+    <el-collapse-item name="log">
+      <template #title>
+        <span style="font-size: 13px;">通信日志</span>
+      </template>
+      <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+        <el-button size="small" @click="clearLog">清空</el-button>
+      </div>
+      <el-input
+        type="textarea"
+        ref="logTextarea"
+        v-model="logContent"
+        :rows="6"
+        readonly
+        style="font-family: monospace;"
+      />
+    </el-collapse-item>
+  </el-collapse>
 </template>
