@@ -11,10 +11,10 @@ const activeTab = ref("serialPort");
   <div class="container">
     <el-tabs v-model="activeTab" type="border-card">
       <el-tab-pane name="serialPort" label="串口调试">
-        <SerialPort />
+        <SerialPort v-if="activeTab === 'serialPort'" />
       </el-tab-pane>
       <el-tab-pane name="modbus" label="Modbus调试">
-        <Modbus />
+        <Modbus v-if="activeTab === 'modbus'"/>
       </el-tab-pane>
     </el-tabs>
   </div>

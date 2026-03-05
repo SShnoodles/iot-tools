@@ -1,5 +1,7 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+pub mod display;
 pub mod serial_port;
+pub mod modbus_tcp;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -12,8 +14,11 @@ pub fn run() {
             serial_port::open_serial_port,
             serial_port::stop_serial_port,
             serial_port::write_to_serial_port,
-            serial_port::read_from_serial_port,
             serial_port::is_serial_port_open,
+            modbus_tcp::modbus_tcp_connect,
+            modbus_tcp::modbus_tcp_disconnect,
+            modbus_tcp::modbus_tcp_is_connected,
+            modbus_tcp::modbus_tcp_send,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
