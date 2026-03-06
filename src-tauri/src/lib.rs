@@ -3,10 +3,30 @@ pub mod display;
 pub mod serial_port;
 pub mod modbus_tcp;
 
+use tauri::menu::{Menu, MenuItem, Submenu};
+use tauri::Emitter;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            let lang_zh = MenuItem::with_id(app, "lang-zh", "中文", true, None::<&str>)?;
+            let lang_en = MenuItem::with_id(app, "lang-en", "English", true, None::<&str>)?;
+            let lang_menu = Submenu::with_items(app, "Language", true, &[&lang_zh, &lang_en])?;
+            let menu = Menu::with_items(app, &[&lang_menu])?;
+            app.set_menu(menu)?;
+            app.on_menu_event(|app, event| match event.id().as_ref() {
+                "lang-zh" => {
+                    app.emit("lang-change", "zh").unwrap();
+                }
+                "lang-en" => {
+                    app.emit("lang-change", "en").unwrap();
+                }
+                _ => {}
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             serial_port::get_serial_port_list,
             serial_port::set_serial_port_config,
