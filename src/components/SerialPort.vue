@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted, nextTick } from "vue";
+import { useI18n } from "vue-i18n";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from '@tauri-apps/api/event';
 import SerialPortSetting from "./SerialPortSetting.vue";
 import { SerialPort, Option, SerialPortLog } from "../types/serial";
 import { ElMessage } from 'element-plus';
+
+const { t } = useI18n();
 
 const vForm = ref();
 const serialPortSetting = ref();
@@ -23,36 +26,15 @@ const state = reactive({
     showSend: false,
   } as SerialPort,
   serialPortOptions: [] as Option[],
-  baudRateOptions: [{
-    "label": "9600",
-    "value": 9600
-  }, {
-    "label": "19200",
-    "value": 19200
-  }, {
-    "label": "38400",
-    "value": 38400
-  }, {
-    "label": "57600",
-    "value": 57600
-  }, {
-    "label": "115200",
-    "value": 115200
-  }],
-  sendFormatOptions: [{
-    "label": "HEX",
-    "value": 0
-  }, {
-    "label": "ASCII",
-    "value": 1
-  }],
-  receiveFormatOptions: [{
-    "label": "HEX",
-    "value": 0
-  }, {
-    "label": "ASCII",
-    "value": 1
-  }],
+  baudRateOptions: [
+    { label: "9600",   value: 9600   },
+    { label: "19200",  value: 19200  },
+    { label: "38400",  value: 38400  },
+    { label: "57600",  value: 57600  },
+    { label: "115200", value: 115200 },
+  ],
+  sendFormatOptions:    [{ label: "HEX", value: 0 }, { label: "ASCII", value: 1 }],
+  receiveFormatOptions: [{ label: "HEX", value: 0 }, { label: "ASCII", value: 1 }],
 })
 
 let sendIntervalId = 0;
@@ -64,21 +46,18 @@ const sendLength = ref(0);
 const unlisten = ref();
 
 const open = async () => {
-  if (!state.formData.serialPort || state.formData.serialPort == "") {
-    ElMessage.error("请选择串口！");
+  if (!state.formData.serialPort) {
+    ElMessage.error(t('serial.selectPort'));
     return;
   }
   if (!state.formData.baudRate) {
-    ElMessage.error("请选择波特率！");
+    ElMessage.error(t('serial.selectBaudRate'));
     return;
   }
 
-  // 如果后端还有其他端口未关闭，先关闭它（防御性处理）
   if (openedPortName.value && openedPortName.value !== state.formData.serialPort) {
     await invoke("stop_serial_port", {portName: openedPortName.value});
-    if (unlisten.value) {
-      unlisten.value();
-    }
+    if (unlisten.value) unlisten.value();
     openedPortName.value = "";
   }
 
@@ -89,66 +68,59 @@ const open = async () => {
       return;
     }
     await cleanReturn();
-
-    if (unlisten.value) {
-      unlisten.value();
-    }
+    if (unlisten.value) unlisten.value();
     await read();
-    ElMessage.success("串口已打开");
+    ElMessage.success(t('serial.opened'));
   } catch (e) {
-    ElMessage.error("打开串口失败: " + e);
+    ElMessage.error(t('serial.openFailed') + e);
   }
 }
 
 const send = async () => {
   if (!state.formData.sendContent.trim()) {
-    ElMessage.warning("请输入发送内容");
+    ElMessage.warning(t('serial.inputSendContent'));
     return;
   }
-
   if (sendIntervalId != 0) {
     clearInterval(sendIntervalId);
     sendIntervalId = 0;
   }
-  
   try {
     await invoke("write_to_serial_port", {
-      portName: state.formData.serialPort, 
+      portName: state.formData.serialPort,
       content: state.formData.sendContent.trim(),
       sendFormat: state.formData.sendFormat
     });
   } catch (e) {
-    ElMessage.error("发送失败: " + e);
+    ElMessage.error(t('serial.sendFailed') + e);
   }
 }
 
 const audoSend = async () => {
   if (!state.formData.sendContent.trim()) {
-    ElMessage.warning("请输入发送内容");
+    ElMessage.warning(t('serial.inputSendContent'));
     return;
   }
-
   if (sendIntervalId != 0) {
     clearInterval(sendIntervalId);
     sendIntervalId = 0;
   }
-  
   try {
     sendIntervalId = setInterval(async () => {
       try {
         await invoke("write_to_serial_port", {
-          portName: state.formData.serialPort, 
+          portName: state.formData.serialPort,
           content: state.formData.sendContent.trim(),
           sendFormat: state.formData.sendFormat
         });
       } catch (e) {
-        ElMessage.error("发送失败: " + e);
+        ElMessage.error(t('serial.sendFailed') + e);
         isSend.value = false;
       }
     }, state.formData.autoSendTimes);
     isSend.value = true;
   } catch (e) {
-    ElMessage.error("发送失败: " + e);
+    ElMessage.error(t('serial.sendFailed') + e);
     isSend.value = false;
   }
 }
@@ -158,18 +130,14 @@ const stop = async () => {
     clearInterval(sendIntervalId);
     sendIntervalId = 0;
   }
-  if (unlisten.value) {
-    unlisten.value();
-  }
+  if (unlisten.value) unlisten.value();
   await invoke("stop_serial_port", {portName: state.formData.serialPort})
   await cleanReturn()
 }
 
 const getPortList = async () => {
   let serialPortOptions = await invoke<String[]>("get_serial_port_list");
-  state.serialPortOptions = serialPortOptions.map(i => {
-    return {"label": i, "value": i} as Option;
-  })
+  state.serialPortOptions = serialPortOptions.map(i => ({ label: i, value: i } as Option));
 }
 
 const openSetting = () => {
@@ -192,108 +160,96 @@ const read = async () => {
 
     state.formData.receiveContent += `${timestamp} ${direction} ${arrow} ${content}\n`;
 
-    // 超过 200 行时保留后 100 行，避免内存无限增长
     const lines = state.formData.receiveContent.split('\n');
     if (lines.length > 200) {
       state.formData.receiveContent = lines.slice(-100).join('\n');
     }
 
-    // 统计字节数（hex 格式下每组"xx"是1字节，用空格分隔）
     if (direction === "RX") {
       receiveLength.value += content_hex.split(' ').filter(Boolean).length;
     } else {
       sendLength.value += content_hex.split(' ').filter(Boolean).length;
     }
 
-    // 自动滚动到底部
     nextTick(() => {
       if (receiveTextarea.value) {
         const textarea = (receiveTextarea.value as any)?.$el?.querySelector('textarea') || receiveTextarea.value;
-        if (textarea) {
-          textarea.scrollTop = textarea.scrollHeight;
-        }
+        if (textarea) textarea.scrollTop = textarea.scrollHeight;
       }
     });
   });
 }
 
-onMounted(() => {
-  getPortList();
-})
-
-onUnmounted(() => {
-  stop();
-})
+onMounted(() => { getPortList(); })
+onUnmounted(() => { stop(); })
 </script>
 
 <template>
-  <el-form :model="state.formData" ref="vForm" label-position="right" label-width="80px"
+  <el-form :model="state.formData" ref="vForm" label-position="right" label-width="100px"
            @submit.prevent :inline="true" size="small">
-    <el-form-item label="串口:">
+    <el-form-item :label="t('serial.port')">
       <el-select v-model="state.formData.serialPort" clearable style="width: 250px" :disabled="isOpen">
-        <el-option v-for="(item, index) in state.serialPortOptions" :key="index" :label="item.label"
-                   :value="item.value"></el-option>
+        <el-option v-for="(item, index) in state.serialPortOptions" :key="index" :label="item.label" :value="item.value" />
       </el-select>
-      <el-button @click="getPortList" :disabled="isOpen">刷新</el-button>
+      <el-button @click="getPortList" :disabled="isOpen">{{ t('common.refresh') }}</el-button>
     </el-form-item>
 
-    <el-form-item label="波特率:">
+    <el-form-item :label="t('serial.baudRate')">
       <el-select v-model="state.formData.baudRate" clearable style="width: 100px" :disabled="isOpen">
-        <el-option v-for="(item, index) in state.baudRateOptions" :key="index" :label="item.label"
-                   :value="item.value"></el-option>
+        <el-option v-for="(item, index) in state.baudRateOptions" :key="index" :label="item.label" :value="item.value" />
       </el-select>
-      <el-button @click="openSetting" :disabled="isOpen">设置</el-button>
+      <el-button @click="openSetting" :disabled="isOpen">{{ t('common.settings') }}</el-button>
     </el-form-item>
 
     <el-form-item>
-      <el-button type="primary" @click="open" v-if="!isOpen">打开</el-button>
-      <el-button type="danger" @click="stop" v-else>关闭</el-button>
+      <el-button type="primary" @click="open" v-if="!isOpen">{{ t('common.open') }}</el-button>
+      <el-button type="danger" @click="stop" v-else>{{ t('common.close') }}</el-button>
     </el-form-item>
-
   </el-form>
 
-  <el-form :model="state.formData" label-position="right" label-width="80px" size="small">
-    <el-form-item label="发送设置">
+  <el-form :model="state.formData" label-position="right" label-width="100px" size="small">
+    <el-form-item :label="t('serial.sendSettings')">
       <el-radio-group v-model="state.formData.sendFormat">
-        <el-radio v-for="item in state.sendFormatOptions" :value="item.value">{{item.label}}</el-radio>
+        <el-radio v-for="item in state.sendFormatOptions" :value="item.value">{{ item.label }}</el-radio>
       </el-radio-group>
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-      <el-input-number v-model="state.formData.autoSendTimes" :min="200" :max="1000000" :precision="0" :step="1" controls-position="right">
-      </el-input-number>
+      <el-input-number v-model="state.formData.autoSendTimes" :min="200" :max="1000000" :precision="0" :step="1" controls-position="right" />
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-      <el-button type="primary" @click="send" v-if="isOpen">发送</el-button>
-      <el-button type="primary" @click="audoSend" v-if="isOpen" :disabled="isSend">轮询发送</el-button>
+      <el-button type="primary" @click="send" v-if="isOpen">{{ t('common.send') }}</el-button>
+      <el-button type="primary" @click="audoSend" v-if="isOpen" :disabled="isSend">{{ t('serial.pollingSend') }}</el-button>
     </el-form-item>
 
-    <el-form-item label="发送内容">
-      <el-input type="textarea" v-model="state.formData.sendContent" :rows="4"></el-input>
+    <el-form-item :label="t('serial.sendContent')">
+      <el-input type="textarea" v-model="state.formData.sendContent" :rows="4" />
     </el-form-item>
 
-    <el-form-item label="接收设置">
+    <el-form-item :label="t('serial.receiveSettings')">
       <el-radio-group v-model="state.formData.receiveFormat">
-        <el-radio v-for="item in state.receiveFormatOptions" :value="item.value">{{item.label}}</el-radio>
+        <el-radio v-for="item in state.receiveFormatOptions" :value="item.value">{{ item.label }}</el-radio>
       </el-radio-group>
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-      <el-button @click="cleanReturn">清空</el-button>
+      <el-button @click="cleanReturn">{{ t('common.clear') }}</el-button>
     </el-form-item>
-    <el-form-item label="接收内容">
-      <el-input type="textarea" ref="receiveTextarea" v-model="state.formData.receiveContent" :rows="22"></el-input>
+
+    <el-form-item :label="t('serial.receiveContent')">
+      <el-input type="textarea" ref="receiveTextarea" v-model="state.formData.receiveContent" :rows="22" />
     </el-form-item>
   </el-form>
-  <SerialPortSetting ref="serialPortSetting"></SerialPortSetting>
+
+  <SerialPortSetting ref="serialPortSetting" />
 
   <el-row v-if="state.formData.serialPort">
     <el-col :span="12">
-      <el-text>{{state.formData.serialPort}}:
-        <el-tag type="success" v-if="isOpen">打开</el-tag>
-        <el-tag type="danger" v-else>关闭</el-tag>
+      <el-text>{{ state.formData.serialPort }}:
+        <el-tag type="success" v-if="isOpen">{{ t('common.open') }}</el-tag>
+        <el-tag type="danger" v-else>{{ t('common.close') }}</el-tag>
       </el-text>
     </el-col>
     <el-col :span="4">
-      <el-text>接收: {{receiveLength}} bytes</el-text>
+      <el-text>{{ t('serial.receive') }}{{ receiveLength }} {{ t('common.bytes') }}</el-text>
     </el-col>
     <el-col :span="4">
-      <el-text>发送: {{sendLength}} bytes</el-text>
+      <el-text>{{ t('serial.sendBytes') }}{{ sendLength }} {{ t('common.bytes') }}</el-text>
     </el-col>
   </el-row>
 </template>

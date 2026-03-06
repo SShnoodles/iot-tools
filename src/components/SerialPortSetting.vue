@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import {ref} from "vue";
+import { ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { invoke } from '@tauri-apps/api/core';
+
+const { t } = useI18n();
 
 const dialogVisible = ref(false);
 
@@ -44,62 +47,33 @@ defineExpose({
 </script>
 
 <template>
-  <el-dialog
-    v-model="dialogVisible"
-    title="串口设置"
-    width="500"
-  >
-    <el-form
-        label-position="right"
-        label-width="auto"
-        :model="form"
-        style="max-width: 600px"
-    >
-      <el-form-item label="数据位">
+  <el-dialog v-model="dialogVisible" :title="t('serial.portSettings')" width="500">
+    <el-form label-position="right" label-width="auto" :model="form" style="max-width: 600px">
+      <el-form-item :label="t('serial.dataBits')">
         <el-select v-model="form.dataBits" style="width: 240px">
-          <el-option
-              v-for="item in dataBitsOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-          />
+          <el-option v-for="item in dataBitsOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </el-form-item>
-      <el-form-item label="停止位">
+      <el-form-item :label="t('serial.stopBits')">
         <el-select v-model="form.stopBits" style="width: 240px">
-          <el-option
-              v-for="item in stopBitsOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-          />
+          <el-option v-for="item in stopBitsOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </el-form-item>
-      <el-form-item label="校验位">
+      <el-form-item :label="t('serial.parity')">
         <el-select v-model="form.parity" style="width: 240px">
-          <el-option
-              v-for="item in parityOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-          />
+          <el-option v-for="item in parityOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </el-form-item>
-      <el-form-item label="流控">
+      <el-form-item :label="t('serial.flowControl')">
         <el-select v-model="form.flowControl" style="width: 240px">
-          <el-option
-              v-for="item in flowControlOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-          />
+          <el-option v-for="item in flowControlOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </el-form-item>
     </el-form>
-  <template #footer>
+    <template #footer>
       <div class="dialog-footer">
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="updateConfig">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="updateConfig">{{ t('common.confirm') }}</el-button>
       </div>
     </template>
   </el-dialog>
