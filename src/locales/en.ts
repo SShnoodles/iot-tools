@@ -15,6 +15,10 @@ export default {
   app: {
     serialPort: 'Serial Port',
     modbus: 'Modbus',
+    newVersionTitle: 'New Version Available',
+    newVersionMsg: 'Latest version: {version}. Please visit GitHub to download the update.',
+    upToDate: 'You are on the latest version',
+    updateCheckFailed: 'Update check failed: ',
   },
   serial: {
     port: 'Port:',

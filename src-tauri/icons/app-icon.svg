@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Dark screen background -->
+    <radialGradient id="bg" cx="50%" cy="48%" r="68%">
+      <stop offset="0%"   stop-color="#0d1828"/>
+      <stop offset="100%" stop-color="#04080f"/>
+    </radialGradient>
+
+    <!-- Wave gradient: warm → teal → electric blue → violet -->
+    <linearGradient id="waveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#ff5c20"/>
+      <stop offset="24%"  stop-color="#ffbb00"/>
+      <stop offset="48%"  stop-color="#00e8b0"/>
+      <stop offset="72%"  stop-color="#0095ff"/>
+      <stop offset="100%" stop-color="#9955ff"/>
+    </linearGradient>
+
+    <!-- Outer wide glow on wave -->
+    <filter id="glow1" x="-8%" y="-120%" width="116%" height="340%">
+      <feGaussianBlur stdDeviation="26" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- Inner tight glow -->
+    <filter id="glow2" x="-4%" y="-80%" width="108%" height="260%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- Node dot glow -->
+    <filter id="dotGlow" x="-150%" y="-150%" width="400%" height="400%">
+      <feGaussianBlur stdDeviation="18" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- Subtle ambient glow behind wave -->
+    <filter id="ambient" x="-10%" y="-200%" width="120%" height="500%">
+      <feGaussianBlur stdDeviation="40"/>
+    </filter>
+  </defs>
+
+  <!-- ── Background ── -->
+  <rect width="1024" height="1024" rx="200" fill="url(#bg)"/>
+
+  <!-- Oscilloscope grid (very subtle) -->
+  <line x1="60"  y1="256" x2="964" y2="256" stroke="#fff" stroke-width="1" opacity="0.04"/>
+  <line x1="60"  y1="512" x2="964" y2="512" stroke="#fff" stroke-width="1" opacity="0.07"/>
+  <line x1="60"  y1="768" x2="964" y2="768" stroke="#fff" stroke-width="1" opacity="0.04"/>
+  <line x1="256" y1="60"  x2="256" y2="964" stroke="#fff" stroke-width="1" opacity="0.04"/>
+  <line x1="512" y1="60"  x2="512" y2="964" stroke="#fff" stroke-width="1" opacity="0.04"/>
+  <line x1="768" y1="60"  x2="768" y2="964" stroke="#fff" stroke-width="1" opacity="0.04"/>
+
+  <!--
+    Digital signal path (3 pulses of varying heights):
+    baseline y=560, pulse heights reach y=260 / y=200 / y=330
+    M 68,560        start flat
+    L 190,560       →  L 190,285   rise pulse-1
+    L 330,285       flat top      L 330,560   fall
+    L 428,560       flat          L 428,210   rise pulse-2 (tallest)
+    L 596,210       flat top      L 596,560   fall
+    L 672,560       flat          L 672,340   rise pulse-3
+    L 762,340       flat top      L 762,560   fall
+    L 956,560       end flat
+  -->
+
+  <!-- Ambient colour bloom behind the wave -->
+  <path d="M 68,560 L 190,560 L 190,285 L 330,285 L 330,560
+           L 428,560 L 428,210 L 596,210 L 596,560
+           L 672,560 L 672,340 L 762,340 L 762,560 L 956,560"
+        fill="none" stroke="url(#waveGrad)" stroke-width="60"
+        stroke-linecap="square" filter="url(#ambient)" opacity="0.55"/>
+
+  <!-- Glow layer 1 (wide soft) -->
+  <path d="M 68,560 L 190,560 L 190,285 L 330,285 L 330,560
+           L 428,560 L 428,210 L 596,210 L 596,560
+           L 672,560 L 672,340 L 762,340 L 762,560 L 956,560"
+        fill="none" stroke="url(#waveGrad)" stroke-width="34"
+        stroke-linecap="square" filter="url(#glow1)" opacity="0.65"/>
+
+  <!-- Glow layer 2 (tight) -->
+  <path d="M 68,560 L 190,560 L 190,285 L 330,285 L 330,560
+           L 428,560 L 428,210 L 596,210 L 596,560
+           L 672,560 L 672,340 L 762,340 L 762,560 L 956,560"
+        fill="none" stroke="url(#waveGrad)" stroke-width="26"
+        stroke-linecap="square" filter="url(#glow2)" opacity="0.80"/>
+
+  <!-- Crisp top line -->
+  <path d="M 68,560 L 190,560 L 190,285 L 330,285 L 330,560
+           L 428,560 L 428,210 L 596,210 L 596,560
+           L 672,560 L 672,340 L 762,340 L 762,560 L 956,560"
+        fill="none" stroke="url(#waveGrad)" stroke-width="18"
+        stroke-linecap="square" stroke-linejoin="miter"/>
+
+  <!-- ── Glowing nodes at pulse peaks ── -->
+  <!-- Node 1 – amber (top of pulse 1, x=260, y=285) -->
+  <circle cx="260" cy="285" r="30" fill="#ffbb00" opacity="0.6" filter="url(#dotGlow)"/>
+  <circle cx="260" cy="285" r="16" fill="#ffdd66"/>
+  <circle cx="260" cy="285" r="7"  fill="#ffffff" opacity="0.9"/>
+
+  <!-- Node 2 – teal (top of pulse 2, x=512, y=210)  – biggest, centrepiece -->
+  <circle cx="512" cy="210" r="40" fill="#00e8b0" opacity="0.65" filter="url(#dotGlow)"/>
+  <circle cx="512" cy="210" r="22" fill="#80ffdc"/>
+  <circle cx="512" cy="210" r="9"  fill="#ffffff" opacity="0.95"/>
+
+  <!-- Node 3 – blue (top of pulse 3, x=717, y=340) -->
+  <circle cx="717" cy="340" r="28" fill="#0095ff" opacity="0.60" filter="url(#dotGlow)"/>
+  <circle cx="717" cy="340" r="15" fill="#66ccff"/>
+  <circle cx="717" cy="340" r="6"  fill="#ffffff" opacity="0.9"/>
+
+  <!-- Trailing scan dot at wave tip (right end) -->
+  <circle cx="956" cy="560" r="24" fill="#9955ff" opacity="0.55" filter="url(#dotGlow)"/>
+  <circle cx="956" cy="560" r="11" fill="#cc88ff"/>
+  <circle cx="956" cy="560" r="5"  fill="#ffffff" opacity="0.9"/>
+</svg>

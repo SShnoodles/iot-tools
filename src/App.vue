@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import zhCn from "element-plus/es/locale/lang/zh-cn";
 import en from "element-plus/es/locale/lang/en";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { ElMessage, ElNotification } from "element-plus";
 import SerialPort from "./components/SerialPort.vue";
 import Modbus from "./components/Modbus.vue";
 import StatusBar from "./components/StatusBar.vue";
@@ -14,16 +15,30 @@ const activeTab = ref("serialPort");
 
 const elLocale = computed(() => (locale.value === "zh" ? zhCn : en));
 
-let unlisten: UnlistenFn | undefined;
+const unlisteners: UnlistenFn[] = [];
 
 onMounted(async () => {
-  unlisten = await listen<string>("lang-change", (event) => {
+  unlisteners.push(await listen<string>("lang-change", (event) => {
     locale.value = event.payload;
-  });
+  }));
+  unlisteners.push(await listen<string>("update-available", (event) => {
+    ElNotification({
+      title: t('app.newVersionTitle'),
+      message: t('app.newVersionMsg', { version: event.payload }),
+      type: "warning",
+      duration: 0,
+    });
+  }));
+  unlisteners.push(await listen<string>("update-up-to-date", () => {
+    ElMessage.success(t('app.upToDate'));
+  }));
+  unlisteners.push(await listen<string>("update-check-failed", (event) => {
+    ElMessage.error(t('app.updateCheckFailed') + event.payload);
+  }));
 });
 
 onUnmounted(() => {
-  unlisten?.();
+  unlisteners.forEach(fn => fn());
 });
 </script>
 

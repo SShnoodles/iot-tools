@@ -15,6 +15,10 @@ export default {
   app: {
     serialPort: '串口调试',
     modbus: 'Modbus调试',
+    newVersionTitle: '发现新版本',
+    newVersionMsg: '最新版本: {version}，请前往 GitHub 下载更新',
+    upToDate: '当前已是最新版本',
+    updateCheckFailed: '检查更新失败: ',
   },
   serial: {
     port: '串口:',
