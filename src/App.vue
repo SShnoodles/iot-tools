@@ -6,6 +6,7 @@ import en from "element-plus/es/locale/lang/en";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import SerialPort from "./components/SerialPort.vue";
 import Modbus from "./components/Modbus.vue";
+import StatusBar from "./components/StatusBar.vue";
 
 const { t, locale } = useI18n();
 
@@ -28,7 +29,7 @@ onUnmounted(() => {
 
 <template>
   <el-config-provider :locale="elLocale">
-    <div class="container">
+    <div class="container" style="padding-bottom: 28px;">
       <el-tabs v-model="activeTab" type="border-card">
         <el-tab-pane name="serialPort" :label="t('app.serialPort')">
           <SerialPort v-if="activeTab === 'serialPort'" />
@@ -38,5 +39,6 @@ onUnmounted(() => {
         </el-tab-pane>
       </el-tabs>
     </div>
+    <StatusBar />
   </el-config-provider>
 </template>

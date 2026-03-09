@@ -1,5 +1,5 @@
 # Iot-Tools
-Tauri + Vue 3 + TypeScript
+Tauri2 + Vue3
 
 [![Language](https://img.shields.io/badge/Language-Rust-black.svg)](https://www.rust-lang.org)
 [![Language](https://img.shields.io/badge/Language-Vue-greendark.svg)](https://vuejs.org)
@@ -8,13 +8,46 @@ Tauri + Vue 3 + TypeScript
 
 ## Features
 * [x] SerialPort
-* [ ] Modbus
+* [x] Modbus
 
 ## Development
 ```shell
 pnpm install
 pnpm tauri dev
 ```
+
+## Build
+
+> Prerequisites: [Tauri prerequisites](https://tauri.app/start/prerequisites/) must be installed for your target platform.
+
+### Windows (x86_64)
+
+```shell
+pnpm tauri build --target x86_64-pc-windows-msvc
+```
+
+Output: `src-tauri/target/x86_64-pc-windows-msvc/release/bundle/`
+
+### Linux (x86_64)
+
+```shell
+pnpm tauri build --target x86_64-unknown-linux-gnu
+```
+
+Output: `src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/`
+
+### macOS (x86_64)
+
+```shell
+pnpm tauri build --target x86_64-apple-darwin
+```
+
+Output: `src-tauri/target/x86_64-apple-darwin/release/bundle/`
+
+> Cross-compilation requires the corresponding Rust target to be installed first:
+> ```shell
+> rustup target add <target>
+> ```
 
 ## Overview
 ![serial](docs/serial.png)

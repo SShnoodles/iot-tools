@@ -1,13 +1,30 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, reactive, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from '@tauri-apps/api/event';
 import SerialPortSetting from "./SerialPortSetting.vue";
 import { SerialPort, Option, SerialPortLog } from "../types/serial";
 import { ElMessage } from 'element-plus';
+import { useStatusBar } from '../composables/useStatusBar';
 
 const { t } = useI18n();
+const { setSegments, clearSegments } = useStatusBar();
+
+function updateStatusBar() {
+  if (!state.formData.serialPort) return;
+  setSegments([
+    {
+      label: `${state.formData.serialPort}:`,
+      tag: {
+        text: isOpen.value ? t('common.open') : t('common.close'),
+        type: isOpen.value ? 'success' : 'danger',
+      },
+    },
+    { label: `${t('serial.receive')}${receiveLength.value} ${t('common.bytes')}` },
+    { label: `${t('serial.sendBytes')}${sendLength.value} ${t('common.bytes')}` },
+  ]);
+}
 
 const vForm = ref();
 const serialPortSetting = ref();
@@ -180,8 +197,10 @@ const read = async () => {
   });
 }
 
+watch([() => state.formData.serialPort, isOpen, receiveLength, sendLength], updateStatusBar);
+
 onMounted(() => { getPortList(); })
-onUnmounted(() => { stop(); })
+onUnmounted(() => { stop(); clearSegments(); })
 </script>
 
 <template>
@@ -237,19 +256,4 @@ onUnmounted(() => { stop(); })
   </el-form>
 
   <SerialPortSetting ref="serialPortSetting" />
-
-  <el-row v-if="state.formData.serialPort">
-    <el-col :span="12">
-      <el-text>{{ state.formData.serialPort }}:
-        <el-tag type="success" v-if="isOpen">{{ t('common.open') }}</el-tag>
-        <el-tag type="danger" v-else>{{ t('common.close') }}</el-tag>
-      </el-text>
-    </el-col>
-    <el-col :span="4">
-      <el-text>{{ t('serial.receive') }}{{ receiveLength }} {{ t('common.bytes') }}</el-text>
-    </el-col>
-    <el-col :span="4">
-      <el-text>{{ t('serial.sendBytes') }}{{ sendLength }} {{ t('common.bytes') }}</el-text>
-    </el-col>
-  </el-row>
 </template>
