@@ -1,10 +1,24 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted, nextTick, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { invoke } from "@tauri-apps/api/core";
 import { ElMessage } from "element-plus";
+import { useStatusBar } from '../composables/useStatusBar';
 
 const { t } = useI18n();
+const { setSegments, clearSegments } = useStatusBar();
+
+function updateStatusBar() {
+  const extraTags = isPolling.value ? [{ text: t('modbus.polling'), type: 'warning' as const }] : [];
+  setSegments([{
+    label: `${host.value}:${port.value}`,
+    tag: {
+      text: isConnected.value ? t('common.connected') : t('common.notConnected'),
+      type: isConnected.value ? 'success' : 'danger',
+    },
+    extraTags,
+  }]);
+}
 
 interface ModbusResponse {
   request_hex: string;
@@ -209,15 +223,18 @@ function togglePolling() {
 }
 
 watch(functionCode, () => { if (!isReadFunction.value) stopPolling(); });
+watch([host, port, isConnected, isPolling], updateStatusBar);
+
+onMounted(() => { updateStatusBar(); });
 
 onUnmounted(async () => {
   stopPolling();
   if (isConnected.value) await invoke("modbus_tcp_disconnect");
+  clearSegments();
 });
 </script>
 
 <template>
-  <!-- 连接设置 -->
   <el-form label-position="right" label-width="100px" :inline="true" size="small" @submit.prevent>
     <el-form-item :label="t('modbus.host')">
       <el-input v-model="host" style="width: 150px" :disabled="isConnected" placeholder="192.168.1.1" />
@@ -234,7 +251,6 @@ onUnmounted(async () => {
     </el-form-item>
   </el-form>
 
-  <!-- 请求设置 -->
   <el-form label-position="right" label-width="100px" :inline="true" size="small" @submit.prevent>
     <el-form-item :label="t('modbus.functionCode')">
       <el-select v-model="functionCode" style="width: 150px">
@@ -264,7 +280,6 @@ onUnmounted(async () => {
     </el-form-item>
   </el-form>
 
-  <!-- 写入数据 (FC05/FC06) -->
   <el-form label-position="right" label-width="80px" size="small" v-if="isWriteFunction" @submit.prevent>
     <el-form-item :label="t('modbus.writeData')">
       <el-input-number v-model="writeValue" :min="0" :max="functionCode === 5 ? 1 : 65535" :precision="0" controls-position="right" style="width: 150px" />
@@ -274,7 +289,6 @@ onUnmounted(async () => {
     </el-form-item>
   </el-form>
 
-  <!-- 解析结果表格 (仅读操作) -->
   <el-table
     v-show="isReadFunction"
     :data="parsedValues"
@@ -288,20 +302,6 @@ onUnmounted(async () => {
     <el-table-column prop="display_value" :label="displayFormatOptions.find(o => o.value === displayFormat)?.label ?? displayFormat" />
   </el-table>
 
-  <!-- 状态栏 -->
-  <el-row style="margin-top: 8px;">
-    <el-col :span="24">
-      <el-text>
-        {{ host }}:{{ port }}
-        <el-tag :type="isConnected ? 'success' : 'danger'" size="small" style="margin-left: 8px;">
-          {{ isConnected ? t('common.connected') : t('common.notConnected') }}
-        </el-tag>
-        <el-tag v-if="isPolling" type="warning" size="small" style="margin-left: 8px;">{{ t('modbus.polling') }}</el-tag>
-      </el-text>
-    </el-col>
-  </el-row>
-
-  <!-- 通信日志 -->
   <el-collapse v-model="logCollapse" style="margin-top: 8px;">
     <el-collapse-item name="log">
       <template #title>
