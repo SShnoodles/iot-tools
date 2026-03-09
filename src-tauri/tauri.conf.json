@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "iot-tools",
+  "productName": "IoT Tools",
   "version": "0.1.0",
-  "identifier": "cc.ssnoodles.iot",
+  "identifier": "com.github.SShnoodles.iottools",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "iot-tools",
+        "title": "IoT Tools",
         "width": 980,
         "height": 800
       }
