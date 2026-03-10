@@ -50,6 +50,7 @@ export default {
     username: '用户名:',
     password: '密码:',
     optional: '可选',
+    protocol: '协议版本:',
     connect: '连接',
     disconnect: '断开',
     subscribe: '订阅',

@@ -50,6 +50,7 @@ export default {
     username: 'Username:',
     password: 'Password:',
     optional: 'optional',
+    protocol: 'Protocol:',
     connect: 'Connect',
     disconnect: 'Disconnect',
     subscribe: 'Subscribe',

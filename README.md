@@ -53,3 +53,4 @@ Output: `src-tauri/target/x86_64-apple-darwin/release/bundle/`
 ## Overview
 ![serial](docs/serial.png)
 ![modbus](docs/modbus.png)
+![mqtt](docs/mqtt.png)

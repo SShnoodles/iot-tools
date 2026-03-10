@@ -22,8 +22,14 @@ const port = ref(1883);
 const clientId = ref(`iot-tools-${Math.random().toString(36).slice(2, 8)}`);
 const username = ref("");
 const password = ref("");
+const protocol = ref("v311");
 const isConnected = ref(false);
 const connecting = ref(false);
+
+const protocolOptions = [
+  { label: "3.1.1", value: "v311" },
+  { label: "5.0", value: "v5" },
+];
 
 // Subscribe
 const subTopic = ref("");
@@ -78,6 +84,7 @@ async function connect() {
       clientId: clientId.value,
       username: username.value || null,
       password: password.value || null,
+      protocol: protocol.value,
     });
   } catch (e) {
     ElMessage.error(t("mqtt.connectFailed") + e);
@@ -200,7 +207,7 @@ onUnmounted(async () => {
 
 <template>
   <!-- Connection -->
-  <el-form label-position="right" label-width="90px" :inline="true" size="small" @submit.prevent>
+  <el-form label-position="right" label-width="80px" :inline="true" size="small" @submit.prevent>
     <el-form-item :label="t('mqtt.host')">
       <el-input v-model="host" :disabled="isConnected || connecting" placeholder="localhost"
         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
@@ -220,6 +227,11 @@ onUnmounted(async () => {
     <el-form-item :label="t('mqtt.password')">
       <el-input v-model="password" :disabled="isConnected || connecting" show-password :placeholder="t('mqtt.optional')"
         autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" />
+    </el-form-item>
+    <el-form-item :label="t('mqtt.protocol')">
+      <el-select v-model="protocol" :disabled="isConnected || connecting" style="width: 100px">
+        <el-option v-for="o in protocolOptions" :key="o.value" :label="o.label" :value="o.value" />
+      </el-select>
     </el-form-item>
     <el-form-item>
       <el-button type="primary" @click="connect" v-if="!isConnected" :loading="connecting">
