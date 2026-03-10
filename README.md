@@ -9,6 +9,7 @@ Tauri2 + Vue3
 ## Features
 * [x] SerialPort
 * [x] Modbus
+* [ ] Mqtt
 
 ## Development
 ```shell

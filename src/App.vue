@@ -7,6 +7,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { ElMessage, ElNotification } from "element-plus";
 import SerialPort from "./components/SerialPort.vue";
 import Modbus from "./components/Modbus.vue";
+import Mqtt from "./components/Mqtt.vue";
 import StatusBar from "./components/StatusBar.vue";
 
 const { t, locale } = useI18n();
@@ -51,6 +52,9 @@ onUnmounted(() => {
         </el-tab-pane>
         <el-tab-pane name="modbus" :label="t('app.modbus')">
           <Modbus v-if="activeTab === 'modbus'" />
+        </el-tab-pane>
+        <el-tab-pane name="mqtt" :label="t('app.mqtt')">
+          <Mqtt v-if="activeTab === 'mqtt'" />
         </el-tab-pane>
       </el-tabs>
     </div>
