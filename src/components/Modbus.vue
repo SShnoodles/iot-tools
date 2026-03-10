@@ -51,7 +51,6 @@ const logContent = ref("");
 const parsedValues = ref<ParsedValue[]>([]);
 
 const logTextarea = ref<any>();
-const logCollapse = ref<string[]>([]);
 
 const pollingTimer = ref<ReturnType<typeof setInterval> | null>(null);
 const isPolling = ref(false);
@@ -82,6 +81,17 @@ const functionCodeOptions = computed(() => [
 
 const isReadFunction  = computed(() => [1, 2, 3, 4].includes(functionCode.value));
 const isWriteFunction = computed(() => [5, 6].includes(functionCode.value));
+
+const tableData = computed(() => {
+  if (parsedValues.value.length > 0) return parsedValues.value;
+  return Array.from({ length: quantity.value }, (_, i) => ({
+    address: startAddress.value + i,
+    dec: 0,
+    hex: "",
+    binary: "",
+    display_value: "",
+  }));
+});
 
 function getTimestamp(): string {
   const now = new Date();
@@ -291,10 +301,11 @@ onUnmounted(async () => {
 
   <el-table
     v-show="isReadFunction"
-    :data="parsedValues"
+    :data="tableData"
     size="small"
     border
     style="width: 100%; margin-top: 4px;"
+    max-height="360"
   >
     <el-table-column prop="address" :label="t('modbus.address')" width="100" />
     <el-table-column prop="hex" :label="t('modbus.hex')" />
@@ -302,20 +313,16 @@ onUnmounted(async () => {
     <el-table-column prop="display_value" :label="displayFormatOptions.find(o => o.value === displayFormat)?.label ?? displayFormat" />
   </el-table>
 
-  <el-collapse v-model="logCollapse" style="margin-top: 8px;">
-    <el-collapse-item name="log">
-      <template #title>
-        <span>{{ t('modbus.commLog') }}</span>
-        <el-button size="small" @click.stop="clearLog" style="margin-left: 8px;">{{ t('common.clear') }}</el-button>
-      </template>
-      <el-input
-        type="textarea"
-        ref="logTextarea"
-        v-model="logContent"
-        :rows="5"
-        readonly
-        style="font-family: monospace;"
-      />
-    </el-collapse-item>
-  </el-collapse>
+  <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+    <span>{{ t('modbus.commLog') }}</span>
+    <el-button size="small" @click="clearLog">{{ t('common.clear') }}</el-button>
+  </div>
+  <el-input
+    type="textarea"
+    ref="logTextarea"
+    v-model="logContent"
+    :rows="5"
+    readonly
+    style="font-family: monospace;"
+  />
 </template>
