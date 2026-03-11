@@ -1,5 +1,5 @@
 # Iot-Tools
-Tauri2 + Vue3
+A lightweight IoT debugging tool built with Tauri, supporting Modbus TCP, MQTT, and Serial Port.
 
 [![Language](https://img.shields.io/badge/Language-Rust-black.svg)](https://www.rust-lang.org)
 [![Language](https://img.shields.io/badge/Language-Vue-greendark.svg)](https://vuejs.org)
@@ -9,7 +9,7 @@ Tauri2 + Vue3
 ## Features
 * [x] SerialPort
 * [x] Modbus
-* [ ] Mqtt
+* [x] Mqtt
 
 ## Development
 ```shell
