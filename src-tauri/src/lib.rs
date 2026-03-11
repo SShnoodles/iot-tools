@@ -1,6 +1,7 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 pub mod display;
 pub mod modbus_tcp;
+pub mod mqtt;
 pub mod serial_port;
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
@@ -66,6 +67,12 @@ pub fn run() {
             modbus_tcp::modbus_tcp_disconnect,
             modbus_tcp::modbus_tcp_is_connected,
             modbus_tcp::modbus_tcp_send,
+            mqtt::mqtt_connect,
+            mqtt::mqtt_disconnect,
+            mqtt::mqtt_is_connected,
+            mqtt::mqtt_subscribe,
+            mqtt::mqtt_unsubscribe,
+            mqtt::mqtt_publish,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
