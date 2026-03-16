@@ -2,6 +2,7 @@
 pub mod display;
 pub mod modbus_tcp;
 pub mod mqtt;
+pub mod opcua;
 pub mod serial_port;
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
@@ -73,6 +74,11 @@ pub fn run() {
             mqtt::mqtt_subscribe,
             mqtt::mqtt_unsubscribe,
             mqtt::mqtt_publish,
+            opcua::opcua_connect,
+            opcua::opcua_disconnect,
+            opcua::opcua_is_connected,
+            opcua::opcua_read_node,
+            opcua::opcua_write_node,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -8,6 +8,7 @@ import { ElMessage, ElNotification } from "element-plus";
 import SerialPort from "./components/SerialPort.vue";
 import Modbus from "./components/Modbus.vue";
 import Mqtt from "./components/Mqtt.vue";
+import OpcUa from "./components/OpcUa.vue";
 import StatusBar from "./components/StatusBar.vue";
 
 const { t, locale } = useI18n();
@@ -55,6 +56,9 @@ onUnmounted(() => {
         </el-tab-pane>
         <el-tab-pane name="mqtt" :label="t('app.mqtt')">
           <Mqtt v-if="activeTab === 'mqtt'" />
+        </el-tab-pane>
+        <el-tab-pane name="opcua" :label="t('app.opcua')">
+          <OpcUa v-if="activeTab === 'opcua'" />
         </el-tab-pane>
       </el-tabs>
     </div>

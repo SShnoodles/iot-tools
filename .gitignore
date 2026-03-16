@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# OPC UA PKI - auto-generated certificates and private keys
+src-tauri/pki/
