@@ -76,7 +76,7 @@ async function disconnect() {
   try {
     await invoke("opcua_disconnect");
     isConnected.value = false;
-    rows.value.forEach(r => { r.value = ""; r.time = ""; });
+    rows.value = [];
     ElMessage.info(t("opcua.disconnectedMsg"));
   } catch (e) {
     ElMessage.error(String(e));
