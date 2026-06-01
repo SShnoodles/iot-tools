@@ -10,7 +10,23 @@ A lightweight IoT debugging tool built with Tauri, supporting Modbus TCP, MQTT, 
 * [x] SerialPort
 * [x] Modbus
 * [x] Mqtt
-* [ ] OPC UA
+* [x] OPC UA
+
+## Installation
+
+### Download
+
+Download the latest release from:
+
+https://github.com/SShnoodles/iot-tools/releases/latest
+
+### macOS Users
+
+If macOS reports that the application is damaged, run:
+
+```bash
+xattr -cr /Applications/IoT\ Tools.app
+```
 
 ## Development
 ```shell
