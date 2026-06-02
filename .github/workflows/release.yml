@@ -81,19 +81,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: IoT Tools ${{ github.ref_name }}
+          releaseName: ${{ github.ref_name }}
           releaseBody: |
-            ## Downloads
-
-            Download the package for your platform from the Assets section.
-
-            ### Platforms
+            ## Platforms
 
             - Windows x64
             - Linux x64
             - macOS Universal (Intel + Apple Silicon)
 
-            ### macOS Notes
+            ## macOS Notes
 
             If macOS reports:
 
