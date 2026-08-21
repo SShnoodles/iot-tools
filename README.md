@@ -1,5 +1,5 @@
 # Iot-Tools
-A lightweight IoT debugging tool built with Tauri, supporting Modbus TCP, MQTT, Serial Port, OPC UA.
+A lightweight IoT debugging tool built with Tauri, supporting Modbus TCP, MQTT, Serial Port, OPC UA, and IEC 60870-5-104.
 
 [![Language](https://img.shields.io/badge/Language-Rust-black.svg)](https://www.rust-lang.org)
 [![Language](https://img.shields.io/badge/Language-Vue-greendark.svg)](https://vuejs.org)
@@ -11,6 +11,7 @@ A lightweight IoT debugging tool built with Tauri, supporting Modbus TCP, MQTT, 
 * [x] Modbus
 * [x] Mqtt
 * [x] OPC UA
+* [x] IEC 60870-5-104
 
 ## Installation
 

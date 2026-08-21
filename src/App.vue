@@ -9,6 +9,7 @@ import SerialPort from "./components/SerialPort.vue";
 import Modbus from "./components/Modbus.vue";
 import Mqtt from "./components/Mqtt.vue";
 import OpcUa from "./components/OpcUa.vue";
+import Iec104 from "./components/Iec104.vue";
 import StatusBar from "./components/StatusBar.vue";
 
 const { t, locale } = useI18n();
@@ -59,6 +60,9 @@ onUnmounted(() => {
         </el-tab-pane>
         <el-tab-pane name="opcua" :label="t('app.opcua')">
           <OpcUa v-if="activeTab === 'opcua'" />
+        </el-tab-pane>
+        <el-tab-pane name="iec104" :label="t('app.iec104')">
+          <Iec104 v-if="activeTab === 'iec104'" />
         </el-tab-pane>
       </el-tabs>
     </div>

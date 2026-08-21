@@ -1,5 +1,6 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 pub mod display;
+pub mod iec104;
 pub mod modbus_tcp;
 pub mod mqtt;
 pub mod opcua;
@@ -13,6 +14,31 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            // macOS routes the standard editing shortcuts through native menu items.
+            // Keep these predefined actions whenever a custom application menu is used,
+            // otherwise Cmd+X/C/V/A/Z stops working in every webview input field.
+            let undo = PredefinedMenuItem::undo(app, None)?;
+            let redo = PredefinedMenuItem::redo(app, None)?;
+            let cut = PredefinedMenuItem::cut(app, None)?;
+            let copy = PredefinedMenuItem::copy(app, None)?;
+            let paste = PredefinedMenuItem::paste(app, None)?;
+            let select_all = PredefinedMenuItem::select_all(app, None)?;
+            let edit_separator = PredefinedMenuItem::separator(app)?;
+            let edit_menu = Submenu::with_items(
+                app,
+                "Edit",
+                true,
+                &[
+                    &undo,
+                    &redo,
+                    &edit_separator,
+                    &cut,
+                    &copy,
+                    &paste,
+                    &select_all,
+                ],
+            )?;
+
             let lang_zh = MenuItem::with_id(app, "lang-zh", "中文", true, None::<&str>)?;
             let lang_en = MenuItem::with_id(app, "lang-en", "English", true, None::<&str>)?;
             let sep = PredefinedMenuItem::separator(app)?;
@@ -25,7 +51,7 @@ pub fn run() {
                 true,
                 &[&lang_zh, &lang_en, &sep, &version_item],
             )?;
-            let menu = Menu::with_items(app, &[&lang_menu])?;
+            let menu = Menu::with_items(app, &[&edit_menu, &lang_menu])?;
             app.set_menu(menu)?;
             app.on_menu_event(|app, event| match event.id().as_ref() {
                 "lang-zh" => {
@@ -79,6 +105,13 @@ pub fn run() {
             opcua::opcua_is_connected,
             opcua::opcua_read_node,
             opcua::opcua_write_node,
+            iec104::iec104_connect,
+            iec104::iec104_disconnect,
+            iec104::iec104_is_connected,
+            iec104::iec104_send_control,
+            iec104::iec104_general_interrogation,
+            iec104::iec104_clock_sync,
+            iec104::iec104_send_raw,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

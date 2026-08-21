@@ -26,7 +26,7 @@ serialport = "4.8.1"
 once_cell = "1.21.3"
 chrono = "0.4.43"
 tokio-modbus = { version = "0.17.0", features = ["tcp-sync"] }
-tokio = { version = "1", features = ["time"] }
+tokio = { version = "1", features = ["time", "net", "io-util", "sync"] }
 reqwest = { version = "0.12", features = ["json"] }
 rumqttc = "0.24"
 async-opcua = { version = "0.14", features = ["client"] }
